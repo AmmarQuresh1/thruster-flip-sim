@@ -52,7 +52,7 @@ export const TANKS: Record<TankMode, { label: string; gas: number; infinite: boo
 
 const LIFT = 14000; // enough for all four to throw the car clear of the lineup from flat ground
 const BOOST = 6000;
-const SIDE = 5000;
+const SIDE = 8000;
 
 export const THRUSTERS: ThrusterDef[] = [
   { id: 'B1', label: 'Rear 1', group: 'boost', pos: { x: -2.25, y: 0.0, z: -0.6 }, dir: { x: 1, y: 0, z: 0 }, force: BOOST },
@@ -63,8 +63,9 @@ export const THRUSTERS: ThrusterDef[] = [
   { id: 'FR', label: 'Lift front-R', group: 'lift', pos: { x: 1.6, y: -0.42, z: 0.85 }, dir: { x: 0, y: 1, z: 0 }, force: LIFT },
   { id: 'RL', label: 'Lift rear-L', group: 'lift', pos: { x: -1.6, y: -0.42, z: -0.85 }, dir: { x: 0, y: 1, z: 0 }, force: LIFT },
   { id: 'RR', label: 'Lift rear-R', group: 'lift', pos: { x: -1.6, y: -0.42, z: 0.85 }, dir: { x: 0, y: 1, z: 0 }, force: LIFT },
-  { id: 'SL', label: 'Side L', group: 'side', pos: { x: 0.0, y: 0.25, z: -0.98 }, dir: { x: 0, y: 0, z: 1 }, force: SIDE },
-  { id: 'SR', label: 'Side R', group: 'side', pos: { x: 0.0, y: 0.25, z: 0.98 }, dir: { x: 0, y: 0, z: -1 }, force: SIDE },
+  // Roof-edge jets. The car can't move sideways (see CAR.lockZ), so these only add roll.
+  { id: 'SL', label: 'Roll L', group: 'side', pos: { x: 0.0, y: 0.42, z: -0.98 }, dir: { x: 0, y: 0, z: 1 }, force: SIDE },
+  { id: 'SR', label: 'Roll R', group: 'side', pos: { x: 0.0, y: 0.42, z: 0.98 }, dir: { x: 0, y: 0, z: -1 }, force: SIDE },
 ];
 
 // Course layout along world +x. Ground is y = 0.

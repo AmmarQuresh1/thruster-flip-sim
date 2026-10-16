@@ -125,6 +125,8 @@ export class Sim {
         .setCcdEnabled(true)
         .setAngularDamping(0.05),
     );
+    // Locked to the lane: the car never drifts sideways, so every jump lines up with the parked cars.
+    this.body.setEnabledTranslations(true, true, false, true);
     const vol = 8 * he.x * he.y * he.z;
     this.chassis = world.createCollider(
       R.ColliderDesc.cuboid(he.x, he.y, he.z).setDensity(CAR.mass / vol).setFriction(0.6).setRestitution(0.05),
