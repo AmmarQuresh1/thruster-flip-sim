@@ -616,7 +616,7 @@ function emitPlumes(f: Frame, dt: number) {
       const dist = tmpV.y / -d.y;
       if (dist < 4.5) {
         tmpV.addScaledVector(tmpD, dist);
-        plumes.emitGround(tmpV, Math.round(700 * dt * thr * (1 - dist / 4.5)), 1 - dist / 6);
+        plumes.emitGround(tmpV, Math.round(450 * dt * thr * (1 - dist / 4.5)), 1 - dist / 6);
       }
     }
   }

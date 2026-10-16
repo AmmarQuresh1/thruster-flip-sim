@@ -117,7 +117,7 @@ export class Plumes {
       this.life[i] = 3 + Math.random() * 2.5;
       this.size[i] = 1.0;
       this.grow[i] = 2.6 + Math.random() * 2.4;
-      this.peak[i] = 0.03 + Math.random() * 0.03;
+      this.peak[i] = 0.012 + Math.random() * 0.014;
       this.alpha[i] = this.peak[i];
     }
     this.live += count;

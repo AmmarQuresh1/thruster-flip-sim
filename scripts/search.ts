@@ -4,7 +4,9 @@
 import R from '@dimforge/rapier3d-deterministic-compat';
 import { SLICES, THRUSTERS } from '../src/sim/config';
 import { runProgram, type Outcome } from '../src/sim/sim';
-import { emptyProgram, encodeProgram, setCell } from '../src/sim/program';
+import type { TankMode } from '../src/sim/config';
+const TANK_MODE = (process.env.TANK ?? 'standard') as TankMode;
+import { decodeProgram, emptyProgram, encodeProgram, setCell } from '../src/sim/program';
 
 await R.init();
 
@@ -67,7 +69,7 @@ function seedGenome(): Genome {
     set('RL', 1, 19, 2); set('RR', 1, 19, 2);
     for (const id of ['FL', 'FR', 'RL', 'RR']) set(id, 2, 26, 3);
   } else {
-    for (const id of ['FL', 'FR', 'RL', 'RR']) set(id, 1, 20, 6);
+    for (const id of ['FL', 'FR', 'RL', 'RR']) { set(id, 0, 7, 4); set(id, 1, 20, 6); }
   }
   return g;
 }
@@ -88,13 +90,31 @@ function mutate(g: Genome): Genome {
   return c;
 }
 
-let best = seedGenome();
-let bestO = runProgram(R, toProgram(best));
+// Optional: start from an existing share code (FROM=1.xxxx) instead of the hand-written seed.
+function fromCode(code: string): Genome {
+  const p = decodeProgram(code)!;
+  const g = blank();
+  THRUSTERS.forEach((_, row) => {
+    const spans: Span[] = [];
+    let c = 0;
+    while (c < SLICES) {
+      if (p[row * SLICES + c]) {
+        const s0 = c;
+        while (c < SLICES && p[row * SLICES + c]) c++;
+        spans.push([s0, c - s0]);
+      } else c++;
+    }
+    spans.slice(0, 3).forEach((sp, k) => (g[row][k] = sp));
+  });
+  return g;
+}
+let best = process.env.FROM ? fromCode(process.env.FROM) : seedGenome();
+let bestO = runProgram(R, toProgram(best), undefined, TANK_MODE);
 let bestS = score(bestO);
 let cur = best, curS = bestS;
 for (let i = 0; i < iters; i++) {
   const cand = mutate(cur);
-  const o = runProgram(R, toProgram(cand));
+  const o = runProgram(R, toProgram(cand), undefined, TANK_MODE);
   const s = score(o);
   // accept improvements, occasionally sideways moves
   if (s >= curS || rand() < 0.02) { cur = cand; curS = s; }

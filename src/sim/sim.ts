@@ -15,6 +15,8 @@ type Quat = { x: number; y: number; z: number; w: number };
 const STEPS_PER_SLICE = Math.round(SLICE / DT); // 12
 const PROGRAM_STEPS = STEPS_PER_SLICE * SLICES;
 const MAX_STEPS = Math.round(MAX_TIME / DT);
+const LINEUP_END = Math.max(...COURSE.lineup.map((v) => v.x + v.w / 2)) + 2;
+const LINEUP_START = Math.min(...COURSE.lineup.map((v) => v.x - v.w / 2));
 
 export function rotate(q: Quat, v: Vec3): Vec3 {
   // v' = v + 2w(q×v) + 2 q×(q×v)
@@ -88,6 +90,7 @@ export class Sim {
   private restSteps = 0;
   private hitLineup = false;
   private roofHit = false;
+  private wentAround = false;
 
   constructor(R: RAPIER, program: Program, tank: TankMode = 'standard') {
     this.R = R;
@@ -251,6 +254,8 @@ export class Sim {
 
     const pos = body.translation();
     if (pos.y > this.maxHeight) this.maxHeight = pos.y;
+    // passing the lineup at ground level without hitting it means it steered round the cars
+    if (pos.x > LINEUP_START && pos.x < LINEUP_END - 2 && pos.y < 2.2) this.wentAround = true;
 
     const nContact = this.wheelsInContact();
     const chassisOnGround = this.chassisTouching((h) => h === this.groundHandle);
@@ -304,6 +309,12 @@ export class Sim {
     } else if (!this.everAirborne) {
       status = 'crashed';
       reason = 'Never left the ground';
+    } else if (this.wentAround) {
+      status = 'crashed';
+      reason = 'Went round the lineup instead of over it';
+    } else if (x < LINEUP_END) {
+      status = 'crashed';
+      reason = 'Came down short of the lineup';
     } else if (upY < 0.7 || this.roofHit) {
       status = 'rolled';
       reason = upY < 0.7 ? 'Ended up on its roof' : 'Touched down on the roof';

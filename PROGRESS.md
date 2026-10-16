@@ -25,6 +25,9 @@ Handoff notes so any session can pick this up without the original chat.
 - Audio: 2.8 kHz hiss, roar whose filter opens with thrust, 80 Hz weight, short burst when a thruster opens.
 - `npm run` scripts: `scripts/export-glb.ts` writes the models to ./models as .glb; `scripts/stress.ts` checks run/reset doesn't slow down.
 
+- No ramp (matches the event): the car drives in on flat ground and the four lift thrusters (14 kN each) throw it over the lineup. Standard tank is 110 kg of air. Outcomes now also fail "came down short" and "went round the lineup".
+- Presets re-found for the flat course; `FROM=<code>` and `TANK=<mode>` env vars on `scripts/search.ts` start a search from an existing program or another tank.
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).
