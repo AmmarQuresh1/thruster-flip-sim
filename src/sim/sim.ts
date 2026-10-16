@@ -80,6 +80,7 @@ export class Sim {
   private airborneSteps = 0;
   private everAirborne = false;
   private takeoffStep = -1;
+  private takeoffX: number | null = null;
   private landStep = -1;
   private maxHeight = 0;
   private touchdownSpeed = 0;
@@ -101,11 +102,6 @@ export class Sim {
     // Ground
     const ground = world.createCollider(R.ColliderDesc.cuboid(400, 0.5, 400).setTranslation(0, -0.5, 0).setFriction(0.9));
     this.groundHandle = ground.handle;
-
-    // Kicker ramp: a wedge rising toward +x
-    const { rampStartX: a, rampEndX: b, rampHeight: h, rampHalfWidth: w } = COURSE;
-    const pts = new Float32Array([a, 0, -w, a, 0, w, b, 0, -w, b, 0, w, b, h, -w, b, h, w]);
-    world.createCollider(R.ColliderDesc.convexHull(pts)!.setFriction(0.9));
 
     // Parked lineup
     for (const v of COURSE.lineup) {
@@ -270,10 +266,10 @@ export class Sim {
       if (this.airborneSteps > 12 && !this.everAirborne) {
         this.everAirborne = true;
         this.takeoffStep = this.step - this.airborneSteps;
+        this.takeoffX = pos.x;
       }
     } else {
-      // only count touchdowns clear of the ramp, so brushing the lip on take-off isn't a landing
-      if (this.everAirborne && this.landStep < 0 && pos.x > COURSE.rampEndX + 2) {
+      if (this.everAirborne && this.landStep < 0) {
         this.landStep = this.step;
         this.touchdownSpeed = Math.max(0, -this.prevVel.y);
       }
@@ -329,7 +325,7 @@ export class Sim {
       touchdownSpeed: this.touchdownSpeed,
       airTime: this.takeoffStep >= 0 && this.landStep >= 0 ? (this.landStep - this.takeoffStep) * DT : 0,
       maxHeight: this.maxHeight,
-      distance: x - COURSE.rampEndX,
+      distance: this.takeoffX === null ? 0 : x - this.takeoffX,
       hitLineup: this.hitLineup,
     };
   }

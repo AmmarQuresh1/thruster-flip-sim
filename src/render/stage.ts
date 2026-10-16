@@ -33,7 +33,7 @@ function noiseTexture(size = 256, base = 18, spread = 10) {
  * Generic parked vehicles, built from rounded boxes. Nose faces -z (toward the event camera).
  * Deliberately unbranded: a cab-over semi tractor, a pickup, a saloon and an SUV.
  */
-const PAINT: Record<string, number> = { sedan: 0x141b29, sedan2: 0x8a7652, truck: 0xeef0f2, pickup: 0x5c1a1f, suv: 0x22252a };
+const PAINT: Record<string, number> = { sedan: 0x9a8156, sedan2: 0x141b29, truck: 0xeef0f2, pickup: 0x5c1a1f, suv: 0x22252a };
 let sedanCount = 0;
 
 function rbox(w: number, h: number, d: number, r: number, mat: THREE.Material) {
@@ -172,30 +172,6 @@ export function buildStage(scene: THREE.Scene) {
     root.add(car);
   }
 
-  // kicker ramp
-  const { rampStartX: a, rampEndX: b, rampHeight: h, rampHalfWidth: w } = COURSE;
-  const rs = new THREE.Shape();
-  rs.moveTo(a, 0);
-  rs.lineTo(b, 0);
-  rs.lineTo(b, h);
-  rs.closePath();
-  const rg = new THREE.ExtrudeGeometry(rs, { depth: w * 2, bevelEnabled: false });
-  rg.translate(0, 0, -w);
-  const ramp = new THREE.Mesh(rg, new THREE.MeshStandardMaterial({ color: 0x15171b, roughness: 0.5, metalness: 0.6 }));
-  ramp.castShadow = ramp.receiveShadow = true;
-  root.add(ramp);
-  const len = Math.hypot(b - a, h);
-  const ang = Math.atan2(h, b - a);
-  for (const sz of [-1, 1]) {
-    const edge = new THREE.Mesh(new THREE.BoxGeometry(len, 0.04, 0.04), emissive(0xeaf4ff, 1.3));
-    edge.position.set((a + b) / 2, h / 2 + 0.03, sz * (w + 0.02));
-    edge.rotation.z = ang;
-    root.add(edge);
-  }
-  const lip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, w * 2), emissive(0xff2236, 6));
-  lip.position.set(b, h + 0.02, 0);
-  root.add(lip);
-
   // floodlight rigs (left of the event shot = +x side here, behind the lineup)
   const rigMat = new THREE.MeshStandardMaterial({ color: 0x1b1d21, roughness: 0.7, metalness: 0.5 });
   const lampMat = emissive(0xfff3dd, 3.5);
@@ -285,9 +261,9 @@ export function buildStage(scene: THREE.Scene) {
   // approach lane: painted centreline, low barriers with vertical red LED strips,
   // and low floodlights that switch on in sequence as the car passes
   const paint = new THREE.MeshStandardMaterial({ color: 0xd8dade, roughness: 0.7 });
-  const lineA = new THREE.Mesh(new THREE.PlaneGeometry(COURSE.rampStartX + 70, 0.16), paint);
+  const lineA = new THREE.Mesh(new THREE.PlaneGeometry(COURSE.laneEndX + 70, 0.16), paint);
   lineA.rotation.x = -Math.PI / 2;
-  lineA.position.set((COURSE.rampStartX - 70) / 2, 0.012, 0);
+  lineA.position.set((COURSE.laneEndX - 70) / 2, 0.012, 0);
   root.add(lineA);
   const lineB = new THREE.Mesh(new THREE.PlaneGeometry(80, 0.16), paint);
   lineB.rotation.x = -Math.PI / 2;
@@ -297,16 +273,16 @@ export function buildStage(scene: THREE.Scene) {
   const stripMat = emissive(0xff2236, 4);
   const floods: { x: number; mat: THREE.MeshStandardMaterial }[] = [];
   for (const sz of [-1, 1]) {
-    const len = COURSE.rampStartX + 66;
+    const len = COURSE.laneEndX + 66;
     const bar = new THREE.Mesh(new THREE.BoxGeometry(len, 0.7, 0.18), barrierMat);
-    bar.position.set(COURSE.rampStartX - 1 - len / 2, 0.35, sz * 4.6);
+    bar.position.set(COURSE.laneEndX - 1 - len / 2, 0.35, sz * 4.6);
     root.add(bar);
-    for (let x = COURSE.rampStartX - 3; x > COURSE.rampStartX - 66; x -= 3) {
+    for (let x = COURSE.laneEndX - 3; x > COURSE.laneEndX - 66; x -= 3) {
       const st = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.03), stripMat);
       st.position.set(x, 0.38, sz * (4.6 - 0.1));
       root.add(st);
     }
-    for (let x = COURSE.rampStartX - 5; x > COURSE.rampStartX - 64; x -= 6) {
+    for (let x = COURSE.laneEndX - 5; x > COURSE.laneEndX - 64; x -= 6) {
       const mat = emissive(0xf4f7ff, 0);
       const f = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.04), mat);
       f.position.set(x, 0.85, sz * (4.6 - 0.12));

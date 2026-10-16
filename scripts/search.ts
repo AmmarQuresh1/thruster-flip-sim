@@ -9,7 +9,7 @@ import { emptyProgram, encodeProgram, setCell } from '../src/sim/program';
 await R.init();
 
 type Span = [number, number]; // start slice, length (0 = unused)
-type Genome = Span[][]; // per thruster, two spans
+type Genome = Span[][]; // per thruster, three spans
 
 const target = process.argv[2] ?? 'kickflip';
 const iters = Number(process.argv[3] ?? 1500);
@@ -43,26 +43,31 @@ function score(o: Outcome): number {
   s -= 20 * Math.abs(Math.abs(o.yawTurns) - T.yaw);
   s -= 0.25 * o.gasUsed;
   s -= (T.soft ? 6 : 1.2) * o.touchdownSpeed;
+  s -= 4 * Math.max(0, o.maxHeight - 9); // keep the arc close to the event: just over the semi, not into orbit
   return s;
 }
 
 function blank(): Genome {
-  return THRUSTERS.map(() => [[0, 0], [0, 0]] as Span[]);
+  return THRUSTERS.map(() => [[0, 0], [0, 0], [0, 0]] as Span[]);
 }
 
 function seedGenome(): Genome {
+  // No ramp: all four lift thrusters throw the car up before the lineup (~0.7 s in), then the
+  // trick-specific pairs spin it, then all four cushion the landing.
   const g = blank();
   const set = (id: string, k: number, s: number, l: number) => (g[idx(id)][k] = [s, l]);
+  for (const id of ['FL', 'FR', 'RL', 'RR']) set(id, 0, 7, 3);
   if (target === 'kickflip' || target === 'event' || target === 'double') {
-    const n = target === 'double' ? 4 : 2;
-    set('FL', 0, 13, n); set('RL', 0, 13, n);
-    set('FR', 0, 26, n); set('RR', 0, 26, n);
-    set('FL', 1, 28, 2); set('RL', 1, 28, 2);
+    const n = target === 'double' ? 3 : 2;
+    set('FL', 1, 11, n); set('RL', 1, 11, n);
+    set('FR', 1, 19, n); set('RR', 1, 19, n);
+    for (const id of ['FL', 'FR', 'RL', 'RR']) set(id, 2, 26, 3);
   } else if (target === 'backflip') {
-    set('FL', 0, 13, 2); set('FR', 0, 13, 2);
-    set('RL', 0, 26, 2); set('RR', 0, 26, 2);
+    set('FL', 1, 11, 2); set('FR', 1, 11, 2);
+    set('RL', 1, 19, 2); set('RR', 1, 19, 2);
+    for (const id of ['FL', 'FR', 'RL', 'RR']) set(id, 2, 26, 3);
   } else {
-    for (const id of ['FL', 'FR', 'RL', 'RR']) { set(id, 0, 17, 3); set(id, 1, 26, 4); }
+    for (const id of ['FL', 'FR', 'RL', 'RR']) set(id, 1, 20, 6);
   }
   return g;
 }
@@ -72,12 +77,12 @@ function mutate(g: Genome): Genome {
   const n = 1 + ri(3);
   for (let k = 0; k < n; k++) {
     const row = ri(THRUSTERS.length);
-    const j = ri(2);
+    const j = ri(3);
     const sp = c[row][j];
     const m = ri(4);
     if (m === 0) sp[0] = Math.max(0, Math.min(SLICES - 1, sp[0] + ri(5) - 2));
     else if (m === 1) sp[1] = Math.max(0, Math.min(8, sp[1] + ri(3) - 1));
-    else if (m === 2) { sp[0] = 6 + ri(34); sp[1] = 1 + ri(3); }
+    else if (m === 2) { sp[0] = 4 + ri(36); sp[1] = 1 + ri(3); }
     else sp[1] = 0;
   }
   return c;
