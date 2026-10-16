@@ -1,0 +1,35 @@
+{
+  "name": "thruster-flip-sim",
+  "version": "0.1.0",
+  "scripts": {
+    "test": "tsx scripts/test.ts",
+    "dev": "vite",
+    "build": "vite build",
+    "build:single": "SINGLE=1 vite build",
+    "search": "tsx scripts/search.ts",
+    "shots": "tsx scripts/shots.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmmarQuresh1/thruster-flip-sim.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AmmarQuresh1/thruster-flip-sim/issues"
+  },
+  "homepage": "https://github.com/AmmarQuresh1/thruster-flip-sim#readme",
+  "dependencies": {
+    "@dimforge/rapier3d-deterministic-compat": "^0.21.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "playwright": "^1.64.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vite-plugin-singlefile": "^2.3.3"
+  },
+  "type": "module",
+  "private": "true"
+}

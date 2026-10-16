@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Thruster Flip Sim</title>
+    <meta name="description" content="Program ten cold-gas thrusters on a supercar and try to land a kickflip over a parked lineup." />
+    <meta name="claude:viewport-fit-sides" content="cover" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="view" aria-label="3D view of the thruster car"></canvas>
+
+      <header class="hud-top">
+        <div class="brand">
+          <h1>Thruster Flip Sim</h1>
+          <p class="sub">10 cold-gas thrusters · 10,000 psi · you write the firing schedule</p>
+        </div>
+        <div class="telemetry" aria-live="off">
+          <div class="tm"><span class="k">T+</span><span class="v" id="tm-t">0.00</span><span class="u">s</span></div>
+          <div class="tm"><span class="k">ALT</span><span class="v" id="tm-alt">0.0</span><span class="u">m</span></div>
+          <div class="tm"><span class="k">SPD</span><span class="v" id="tm-spd">0</span><span class="u">km/h</span></div>
+          <div class="tm"><span class="k">ROLL</span><span class="v" id="tm-roll">0</span><span class="u">°</span></div>
+          <div class="tm gas">
+            <span class="k">TANK</span><span class="v" id="tm-psi">10,000</span><span class="u">psi</span>
+            <div class="gasbar"><i id="tm-gas"></i></div>
+          </div>
+        </div>
+      </header>
+
+      <div class="hud-tools" role="toolbar" aria-label="View controls">
+        <button id="btn-cam" class="tool" title="Switch camera (C)">Event cam</button>
+        <button id="btn-slow" class="tool" aria-pressed="false" title="Slow motion (S)">Slow-mo</button>
+        <button id="btn-sound" class="tool" aria-pressed="true" title="Sound">Sound on</button>
+        <button id="btn-rec" class="tool rec" aria-pressed="false" title="Record the next run as a video clip">● Record run</button>
+      </div>
+
+      <section class="result" id="result" hidden>
+        <p class="r-status" id="r-status">Stuck the landing</p>
+        <h2 class="r-trick" id="r-trick">Kickflip</h2>
+        <dl class="r-stats">
+          <div><dt>Gas used</dt><dd id="r-gas">0 kg</dd></div>
+          <div><dt>Air time</dt><dd id="r-air">0 s</dd></div>
+          <div><dt>Touchdown</dt><dd id="r-td">0 m/s</dd></div>
+          <div><dt>Peak height</dt><dd id="r-h">0 m</dd></div>
+        </dl>
+        <div class="r-actions">
+          <button id="r-replay" class="btn">Replay</button>
+          <button id="r-share" class="btn primary">Copy link to this flip</button>
+        </div>
+      </section>
+
+      <section class="panel" id="panel" aria-label="Thruster program">
+        <div class="panel-head">
+          <button id="btn-play" class="play" aria-label="Play run">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path id="play-icon" d="M7 4.5v15l12.5-7.5z" /></svg>
+            <span id="play-label">Play</span>
+          </button>
+          <label class="preset">
+            <span>Preset</span>
+            <select id="sel-preset"></select>
+          </label>
+          <button id="btn-clear" class="btn ghost">Clear grid</button>
+          <button id="btn-share" class="btn ghost">Copy link</button>
+          <p class="hint" id="hint">Tap or drag cells to fire a thruster for 0.1 s. Time runs left to right.</p>
+        </div>
+        <div class="grid-wrap">
+          <div class="grid" id="grid"></div>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" role="status" hidden></div>
+      <div class="loading" id="loading">Pressurising tank…</div>
+
+      <dialog id="clip-dialog" class="clip">
+        <video id="clip-video" controls playsinline></video>
+        <div class="clip-actions">
+          <a id="clip-download" class="btn primary" download="thruster-flip.webm">Save clip</a>
+          <button id="clip-close" class="btn ghost">Close</button>
+        </div>
+        <p class="clip-note">If saving doesn't start, right-click the video (or long-press on a phone) to save it.</p>
+      </dialog>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

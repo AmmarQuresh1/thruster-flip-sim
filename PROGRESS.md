@@ -1,0 +1,23 @@
+# Progress
+
+Handoff notes so any session can pick this up without the original chat.
+
+## Done
+- Vite + TypeScript + three.js app, Rapier physics (deterministic build) at a fixed 120 Hz.
+- Sim core in `src/sim/` (no DOM): 10 thrusters (4 rear boost, 4 corner lift, 2 side), 70 kg air tank at 10,000 psi with mass and centre of mass updated as gas vents, ramp, parked lineup, outcome scoring (trick name, gas used, touchdown speed, air time).
+- Thruster grid: 10 rows × 40 slices of 0.1 s. Programs encode to a share link (`#1.<base64url>`).
+- Presets found by `scripts/search.ts` and checked by `npm test`: event-style kickflip (soft landing), double kickflip, backflip, soft landing.
+- Night scene in `src/render/`: original unbranded wedge car, stage with red LED strip, unbranded lineup, floodlights, power line, cold-gas particle plumes, bloom, synthesised thruster audio.
+- Cameras: event (fixed wide shot that pans), chase, free orbit. Slow-mo. Clip recording via MediaRecorder.
+
+## In progress
+- Visual tuning of the event shot framing and plume density (check with `npm run shots`).
+- GitHub Pages deploy workflow (`.github/workflows/pages.yml`).
+
+## Next
+- Result card screenshot check, phone-width layout check.
+- Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).
+
+## Rules
+- Anything that changes `src/sim/config.ts` invalidates preset codes: re-run `npm run search -- <target> 4000 <seed>` and update `src/sim/presets.ts`, then `npm test`.
+- Keep physics code free of `Math.sin/cos/...` so share links replay identically across browsers.
