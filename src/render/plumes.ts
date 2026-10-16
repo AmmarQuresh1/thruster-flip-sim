@@ -84,10 +84,10 @@ export class Plumes {
       this.vel[i * 3 + 1] = (dir.y + ry) * sp + carVel.y * 0.6;
       this.vel[i * 3 + 2] = (dir.z + rz) * sp + carVel.z * 0.6;
       this.age[i] = 0;
-      this.life[i] = 2.2 + Math.random() * 3.5;
+      this.life[i] = 1.8 + Math.random() * 3.0;
       this.size[i] = 0.5;
       this.grow[i] = 2.2 + Math.random() * 2.2;
-      this.peak[i] = 0.035 + Math.random() * 0.035;
+      this.peak[i] = 0.026 + Math.random() * 0.03;
       this.alpha[i] = this.peak[i];
     }
   }

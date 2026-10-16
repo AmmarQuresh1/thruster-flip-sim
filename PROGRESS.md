@@ -10,13 +10,14 @@ Handoff notes so any session can pick this up without the original chat.
 - Night scene in `src/render/`: original unbranded wedge car, stage with red LED strip, unbranded lineup, floodlights, power line, cold-gas particle plumes, bloom, synthesised thruster audio.
 - Cameras: event (fixed wide shot that pans), chase, free orbit. Slow-mo. Clip recording via MediaRecorder.
 
-## In progress
-- Visual tuning of the event shot framing and plume density (check with `npm run shots`).
-- GitHub Pages deploy workflow (`.github/workflows/pages.yml`).
+- Event-shot framing tuned (camera shifted above the programme panel, pans with the car, tighter tracking on phones).
+- GitHub Pages deploy workflow (`.github/workflows/pages.yml`): set Settings → Pages → Source to "GitHub Actions".
+- `npm run build:single` makes a one-file build used for the in-chat preview.
 
 ## Next
-- Result card screenshot check, phone-width layout check.
+- Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).
+- Clip download only works on the real site, not inside the claude.ai preview.
 
 ## Rules
 - Anything that changes `src/sim/config.ts` invalidates preset codes: re-run `npm run search -- <target> 4000 <seed>` and update `src/sim/presets.ts`, then `npm test`.

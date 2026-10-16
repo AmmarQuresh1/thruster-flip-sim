@@ -462,7 +462,8 @@ function updateCamera(dt: number) {
   const p = car.root.position;
   if (camMode === 'event') {
     camera.position.set(9, 2.2, -42);
-    const tx = THREE.MathUtils.clamp(p.x * 0.6 + 8, -12, 27);
+    const k = camera.aspect < 1 ? 0.95 : 0.6; // narrow screens track the car more tightly
+    const tx = THREE.MathUtils.clamp(p.x * k + (1 - k) * 20, -24, 70);
     const ty = 5.2;
     camLook.lerp(tmpV.set(tx, ty, 0), 1 - Math.exp(-dt * 2.5));
     camera.lookAt(camLook);

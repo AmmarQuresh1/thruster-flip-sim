@@ -22,17 +22,17 @@ await page.goto('http://localhost:5199/' + (process.env.HASH ? '#' + process.env
 await page.waitForFunction(() => (window as any).__flip, null, { timeout: 120000 });
 await page.evaluate((c) => (window as any).__flip.setCam(c), cam);
 await page.waitForTimeout(1500);
-if (times[0] === 0) await page.screenshot({ path: `shots/${cam}-idle-${width}.png` });
+if (times[0] === 0) await page.screenshot({ path: `shots/${cam}-idle-${width}.png`, timeout: 180000 });
 await page.evaluate(() => (window as any).__flip.setSlow(true));
 await page.evaluate(() => (window as any).__flip.play());
 for (const t of times.filter((x) => x > 0)) {
   await page.waitForFunction((tt) => (window as any).__flip.t >= tt, t, { timeout: 300000, polling: 50 });
-  await page.screenshot({ path: `shots/${cam}-t${t.toFixed(1)}-${width}.png` });
+  await page.screenshot({ path: `shots/${cam}-t${t.toFixed(1)}-${width}.png`, timeout: 180000 });
 }
 if (process.env.END) {
   await page.evaluate(() => (window as any).__flip.setSlow(false));
   await page.waitForFunction(() => document.getElementById('result') && !document.getElementById('result')!.hidden, null, { timeout: 300000 });
-  await page.screenshot({ path: `shots/${cam}-result-${width}.png` });
+  await page.screenshot({ path: `shots/${cam}-result-${width}.png`, timeout: 180000 });
 }
 console.log(JSON.stringify(await page.evaluate(() => (window as any).__flip.outcome)));
 if (errors.length) console.log('ERRORS:\n' + errors.join('\n'));
