@@ -19,6 +19,12 @@ Handoff notes so any session can pick this up without the original chat.
 - Quality: pixel count capped, bloom at half res, auto drop to low (no MSAA, smaller shadows, fewer particles) when frames are slow; Quality button to force high/low.
 - Lineup rebuilt from rounded boxes: cab-over semi, pickup, saloons, SUV (all generic).
 
+- Staging from the event video notes: floodlight tower with haze behind the semi, truss rigs with round lamps either side, curved truss arch, approach lane with centreline, red-strip barriers and floodlights that switch on as the car passes.
+- Cameras: event, side track, runway, telephoto, landing, chase, free.
+- Plumes: ground blast when a jet points at the asphalt, a cool light under the car while lifting, reset clears all gas, dead particles are not drawn, on-screen puff size capped.
+- Audio: 2.8 kHz hiss, roar whose filter opens with thrust, 80 Hz weight, short burst when a thruster opens.
+- `npm run` scripts: `scripts/export-glb.ts` writes the models to ./models as .glb; `scripts/stress.ts` checks run/reset doesn't slow down.
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).

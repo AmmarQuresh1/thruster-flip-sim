@@ -9,10 +9,12 @@ const vert = /* glsl */ `
   attribute float aAlpha;
   varying float vAlpha;
   uniform float uScale;
+  uniform float uMaxSize;
   void main() {
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = aSize * uScale / -mv.z;
+    // cap on-screen size: a puff right in front of the lens would otherwise fill the screen many times over
+    gl_PointSize = aSize <= 0.0 ? 0.0 : min(aSize * uScale / -mv.z, uMaxSize);
     vAlpha = aAlpha;
   }
 `;
@@ -40,6 +42,7 @@ export class Plumes {
   private peak = new Float32Array(MAX);
   private head = 0;
   density = 1; // emission multiplier, lowered on slow machines
+  private live = 0; // particles possibly alive; lets update() skip work when the air is clear
   private geo: THREE.BufferGeometry;
   private mat: THREE.ShaderMaterial;
 
@@ -53,7 +56,7 @@ export class Plumes {
     this.mat = new THREE.ShaderMaterial({
       vertexShader: vert,
       fragmentShader: frag,
-      uniforms: { uScale: { value: 600 }, uColor: { value: new THREE.Color(1.5, 1.6, 1.75) } },
+      uniforms: { uScale: { value: 600 }, uMaxSize: { value: 300 }, uColor: { value: new THREE.Color(1.5, 1.6, 1.75) } },
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -65,6 +68,7 @@ export class Plumes {
 
   setViewportHeight(h: number) {
     this.mat.uniforms.uScale.value = h * 0.9;
+    this.mat.uniforms.uMaxSize.value = Math.max(64, h * 0.3);
   }
 
   /** Emit along a jet. origin/dir in world space; carVel adds the car's motion. */
@@ -92,9 +96,36 @@ export class Plumes {
       this.peak[i] = 0.026 + Math.random() * 0.03;
       this.alpha[i] = this.peak[i];
     }
+    this.live += count;
+  }
+
+  /** Gas hitting the ground: puffs that shoot outward along the asphalt and hang around. */
+  emitGround(point: THREE.Vector3, count: number, strength: number) {
+    count = Math.max(1, Math.round(count * this.density));
+    for (let n = 0; n < count; n++) {
+      const i = this.head;
+      this.head = (this.head + 1) % MAX;
+      const ang = Math.random() * Math.PI * 2;
+      const sp = (8 + Math.random() * 14) * strength;
+      this.pos[i * 3] = point.x;
+      this.pos[i * 3 + 1] = 0.15;
+      this.pos[i * 3 + 2] = point.z;
+      this.vel[i * 3] = Math.cos(ang) * sp;
+      this.vel[i * 3 + 1] = 0.4 + Math.random() * 1.6;
+      this.vel[i * 3 + 2] = Math.sin(ang) * sp;
+      this.age[i] = 0;
+      this.life[i] = 3 + Math.random() * 2.5;
+      this.size[i] = 1.0;
+      this.grow[i] = 2.6 + Math.random() * 2.4;
+      this.peak[i] = 0.03 + Math.random() * 0.03;
+      this.alpha[i] = this.peak[i];
+    }
+    this.live += count;
   }
 
   update(dt: number) {
+    if (this.live <= 0) return;
+    let alive = 0;
     const drag = Math.exp(-dt * 3.2);
     for (let i = 0; i < MAX; i++) {
       if (this.alpha[i] <= 0 && this.age[i] >= this.life[i]) continue;
@@ -102,6 +133,7 @@ export class Plumes {
       const L = this.life[i];
       if (a >= L) {
         this.alpha[i] = 0;
+        this.size[i] = 0; // zero-size points are not rasterised, so dead gas costs nothing to draw
         continue;
       }
       const k = i * 3;
@@ -123,7 +155,9 @@ export class Plumes {
       const fadeIn = Math.min(1, a * 12);
       const fadeOut = 1 - a / L;
       this.alpha[i] = this.peak[i] * fadeIn * fadeOut * fadeOut;
+      alive++;
     }
+    this.live = alive;
     (this.geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
     (this.geo.attributes.aSize as THREE.BufferAttribute).needsUpdate = true;
     (this.geo.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
@@ -131,7 +165,11 @@ export class Plumes {
 
   clear() {
     this.alpha.fill(0);
+    this.size.fill(0);
     this.age.fill(1e9);
     this.life.fill(0);
+    this.live = 0;
+    (this.geo.attributes.aSize as THREE.BufferAttribute).needsUpdate = true;
+    (this.geo.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
   }
 }

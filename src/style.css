@@ -2,7 +2,7 @@
    the thruster programme docked along the bottom like a sequencer. */
 :root {
   --night: #07090c; /* scene clear colour and page ground */
-  --panel: rgba(10, 13, 18, 0.86);
+  --panel: rgba(9, 11, 15, 0.94);
   --rule: rgba(160, 190, 220, 0.14);
   --ink: #e7edf3;
   --ink-dim: #8796a6;
@@ -103,7 +103,6 @@ button { cursor: pointer; }
   border: 1px solid var(--rule);
   border-top: 2px solid var(--good);
   padding: 16px 18px 18px;
-  backdrop-filter: blur(6px);
   text-align: left;
 }
 .result.bad { border-top-color: var(--led); }
@@ -144,7 +143,6 @@ button { cursor: pointer; }
   padding-block: 10px max(10px, env(safe-area-inset-bottom, 0px));
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  backdrop-filter: blur(8px);
 }
 .panel-head { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 8px; }
 .play {

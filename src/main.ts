@@ -55,7 +55,7 @@ function buildEnv() {
 }
 const envMap = buildEnv();
 
-buildStage(scene);
+const stage = buildStage(scene);
 const { key: keyLight } = buildLights(scene);
 const carKey = new THREE.DirectionalLight(0xe8eef8, 1.1);
 carKey.position.set(-6, 14, -30);
@@ -76,6 +76,16 @@ const controls = new OrbitControls(camera, canvas);
 controls.enabled = false;
 controls.enableDamping = true;
 
+// ---------------------------------------------------------------- cameras
+type CamMode = 'event' | 'side' | 'runway' | 'tele' | 'landing' | 'chase' | 'free';
+const CAM_ORDER: CamMode[] = ['event', 'side', 'runway', 'tele', 'landing', 'chase', 'free'];
+const BASE_FOV: Record<CamMode, number> = { event: 40, side: 44, runway: 36, tele: 15, landing: 52, chase: 50, free: 50 };
+function fovFor(m: CamMode) {
+  const a = window.innerWidth / window.innerHeight;
+  return Math.min(85, BASE_FOV[m] * (a < 1 ? 1.55 : a < 1.4 ? 1.2 : 1));
+}
+let camMode: CamMode = 'event';
+
 // ---------------------------------------------------------------- quality
 // 'auto' starts high and drops to low if frames are slow. Pixel count is capped either way,
 // because a 4K screen at full resolution is what makes most decent PCs struggle here.
@@ -92,7 +102,7 @@ function isLow() {
   return quality === 'low' || (quality === 'auto' && lowActive);
 }
 function pickPixelRatio(w: number, h: number) {
-  const maxPixels = isLow() ? 1.2e6 : 3.2e6;
+  const maxPixels = isLow() ? 1.2e6 : 4.5e6;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   return Math.max(0.5, Math.min(dpr, Math.sqrt(maxPixels / (w * h))));
 }
@@ -118,10 +128,12 @@ function resize() {
   renderer.setSize(w, h, false);
   composer.setSize(w, h);
   // bloom is blurry by nature, so render it at half resolution
-  bloom.setSize(Math.round((w * dpr) / 2), Math.round((h * dpr) / 2));
+  // bloom is blurry by nature, so on low quality render it at half resolution
+  const bs = isLow() ? 0.5 : 1;
+  bloom.setSize(Math.round(w * dpr * bs), Math.round(h * dpr * bs));
   camera.aspect = w / h;
   // keep the whole jump in shot on tall phone screens
-  camera.fov = camera.aspect < 1 ? 62 : camera.aspect < 1.4 ? 48 : 40;
+  camera.fov = fovFor(camMode);
   // Shift the projection up so the action is centred in the space above the programme panel.
   const panelH = Math.min(document.getElementById('panel')?.offsetHeight ?? 0, h * 0.6);
   camera.setViewOffset(w, h + panelH, 0, panelH, w, h);
@@ -141,8 +153,6 @@ let acc = 0;
 let timeScale = 1;
 let finishedAt = -1;
 let lastOutcome: Outcome | null = null;
-type CamMode = 'event' | 'chase' | 'free';
-let camMode: CamMode = 'event';
 const camLook = new THREE.Vector3(-10, 5.2, 0);
 
 const audio = new ThrusterAudio();
@@ -211,18 +221,34 @@ function clearBoxPreview() {
   for (const b of boxCells) b.classList.remove('sel-fill', 'sel-erase');
   boxCells = [];
 }
+// Only touch cells whose state changes, so dragging a big box stays cheap.
 function showBox() {
-  clearBoxPreview();
-  if (!boxAnchor || !boxEnd) return;
-  const [r0, r1] = [Math.min(boxAnchor[0], boxEnd[0]), Math.max(boxAnchor[0], boxEnd[0])];
-  const [c0, c1] = [Math.min(boxAnchor[1], boxEnd[1]), Math.max(boxAnchor[1], boxEnd[1])];
+  const want = new Set<HTMLButtonElement>();
+  if (boxAnchor && boxEnd) {
+    const [r0, r1] = [Math.min(boxAnchor[0], boxEnd[0]), Math.max(boxAnchor[0], boxEnd[0])];
+    const [c0, c1] = [Math.min(boxAnchor[1], boxEnd[1]), Math.max(boxAnchor[1], boxEnd[1])];
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) want.add(cells[r][c]);
+  }
   const cls = paintValue ? 'sel-fill' : 'sel-erase';
-  for (let r = r0; r <= r1; r++)
-    for (let c = c0; c <= c1; c++) {
-      cells[r][c].classList.add(cls);
-      boxCells.push(cells[r][c]);
-    }
+  for (const b of boxCells) if (!want.has(b)) b.classList.remove('sel-fill', 'sel-erase');
+  const had = new Set(boxCells);
+  for (const b of want) if (!had.has(b)) b.classList.add(cls);
+  boxCells = [...want];
 }
+// Work out which cell is under the pointer from the grid's geometry instead of asking the browser.
+let gridGeom: { left: number; top: number; pitchX: number; pitchY: number; x0: number; y0: number } | null = null;
+function measureGrid() {
+  const a = cells[0][0].getBoundingClientRect();
+  const b = cells[1][1].getBoundingClientRect();
+  gridGeom = { left: 0, top: 0, pitchX: b.left - a.left, pitchY: b.top - a.top, x0: a.left, y0: a.top };
+}
+function cellAt(x: number, y: number): [number, number] | null {
+  if (!gridGeom) return null;
+  const c = Math.floor((x - gridGeom.x0) / gridGeom.pitchX);
+  const r = Math.floor((y - gridGeom.y0) / gridGeom.pitchY);
+  return [Math.max(0, Math.min(THRUSTERS.length - 1, r)), Math.max(0, Math.min(SLICES - 1, c))];
+}
+let moveQueued: { x: number; y: number } | null = null;
 function commitBox() {
   if (!boxAnchor || !boxEnd) return;
   const [r0, r1] = [Math.min(boxAnchor[0], boxEnd[0]), Math.max(boxAnchor[0], boxEnd[0])];
@@ -242,10 +268,12 @@ gridEl.addEventListener('pointerdown', (e) => {
   // right button always erases; otherwise starting on a lit cell erases and an empty cell fills
   paintValue = e.button === 2 ? 0 : cell(program, rc[0], rc[1]) ? 0 : 1;
   if (precise && e.shiftKey) {
+    measureGrid();
     painting = true; // freehand
     applyPaint(rc);
     markCustom();
   } else if (precise) {
+    measureGrid();
     boxAnchor = boxEnd = rc; // box select, committed on release
     showBox();
   } else {
@@ -255,13 +283,22 @@ gridEl.addEventListener('pointerdown', (e) => {
 });
 window.addEventListener('pointermove', (e) => {
   if (!painting && !boxAnchor) return;
-  const rc = cellFrom(document.elementFromPoint(e.clientX, e.clientY));
-  if (!rc) return;
-  if (painting) applyPaint(rc);
-  else if (rc[0] !== boxEnd?.[0] || rc[1] !== boxEnd?.[1]) {
-    boxEnd = rc;
-    showBox();
-  }
+  // coalesce moves to one update per frame
+  const first = !moveQueued;
+  moveQueued = { x: e.clientX, y: e.clientY };
+  if (!first) return;
+  requestAnimationFrame(() => {
+    const m = moveQueued;
+    moveQueued = null;
+    if (!m || (!painting && !boxAnchor)) return;
+    const rc = cellAt(m.x, m.y);
+    if (!rc) return;
+    if (painting) applyPaint(rc);
+    else if (rc[0] !== boxEnd?.[0] || rc[1] !== boxEnd?.[1]) {
+      boxEnd = rc;
+      showBox();
+    }
+  });
 });
 window.addEventListener('pointerup', () => {
   painting = false;
@@ -405,6 +442,11 @@ function resetRun() {
   applyFrame(idleFrame);
   setPlayhead(-1);
   liveRoll = 0;
+  // everything visual goes back to a clean state; only settings survive a reset
+  plumes.clear();
+  prevThrottle.fill(0);
+  thrustNow = 0;
+  plumeLight.intensity = 0;
 }
 function play() {
   audio.ensure();
@@ -435,12 +477,24 @@ window.addEventListener('keydown', (e) => {
 
 // ---------------------------------------------------------------- view tools
 const camBtn = $('btn-cam');
-const camNames: Record<CamMode, string> = { event: 'Event cam', chase: 'Chase cam', free: 'Free cam' };
+const camNames: Record<CamMode, string> = {
+  event: 'Event cam',
+  side: 'Side track',
+  runway: 'Runway cam',
+  tele: 'Telephoto',
+  landing: 'Landing cam',
+  chase: 'Chase cam',
+  free: 'Free cam',
+};
 function cycleCam() {
-  camMode = camMode === 'event' ? 'chase' : camMode === 'chase' ? 'free' : 'event';
+  camMode = CAM_ORDER[(CAM_ORDER.indexOf(camMode) + 1) % CAM_ORDER.length];
   camBtn.textContent = camNames[camMode];
   controls.enabled = camMode === 'free';
   if (camMode === 'free') controls.target.copy(car.root.position);
+  camLook.copy(car.root.position);
+  camPos.set(car.root.position.x - 4, 2.5, -24);
+  camera.fov = fovFor(camMode);
+  camera.updateProjectionMatrix();
 }
 camBtn.addEventListener('click', cycleCam);
 const slowBtn = $('btn-slow');
@@ -537,11 +591,19 @@ function applyFrame(f: Frame) {
   lastFrame = f;
 }
 
+const prevThrottle = new Array(THRUSTERS.length).fill(0);
+let thrustNow = 0;
 function emitPlumes(f: Frame, dt: number) {
   carVel.set(f.vel.x, f.vel.y, f.vel.z);
+  let lift = 0;
+  let total = 0;
   for (let i = 0; i < THRUSTERS.length; i++) {
     const thr = f.throttle[i];
+    if (thr > 0 && prevThrottle[i] <= 0) audio.burst(THRUSTERS[i].group === 'lift' ? 1 : 0.7);
+    prevThrottle[i] = thr;
     if (thr <= 0) continue;
+    total += thr;
+    if (THRUSTERS[i].group === 'lift') lift += thr;
     const t = THRUSTERS[i];
     tmpV.set(t.pos.x, t.pos.y, t.pos.z);
     car.root.localToWorld(tmpV);
@@ -549,8 +611,21 @@ function emitPlumes(f: Frame, dt: number) {
     tmpD.set(d.x, d.y, d.z);
     const n = Math.max(1, Math.round(1800 * dt * thr));
     plumes.emit(tmpV, tmpD, carVel, n, t.group === 'boost' ? 1.2 : 1);
+    // jets pointing at the ground blast outward along the asphalt
+    if (d.y < -0.35) {
+      const dist = tmpV.y / -d.y;
+      if (dist < 4.5) {
+        tmpV.addScaledVector(tmpD, dist);
+        plumes.emitGround(tmpV, Math.round(700 * dt * thr * (1 - dist / 4.5)), 1 - dist / 6);
+      }
+    }
   }
+  thrustNow = total / THRUSTERS.length;
+  plumeLight.intensity = lift * 22;
+  plumeLight.position.set(f.pos.x, f.pos.y - 1.3, f.pos.z);
 }
+const plumeLight = new THREE.PointLight(0xdff6ff, 0, 15, 2);
+scene.add(plumeLight);
 
 const tmT = $('tm-t');
 const tmAlt = $('tm-alt');
@@ -584,9 +659,30 @@ function showResult(o: Outcome) {
   card.hidden = false;
 }
 
+const camPos = new THREE.Vector3(0, 2.5, -24);
 function updateCamera(dt: number) {
   const p = car.root.position;
-  if (camMode === 'event') {
+  const shake = thrustNow * 0.08;
+  const jitter = () => (Math.random() - 0.5) * shake;
+  const ease = (k: number) => 1 - Math.exp(-dt * k);
+  if (camMode === 'side') {
+    camPos.lerp(tmpV.set(p.x - 3, 2.6, -24), ease(3));
+    camera.position.copy(camPos);
+    camLook.lerp(tmpV.set(p.x, Math.max(2, p.y), 0), ease(5));
+    camera.lookAt(camLook.x + jitter(), camLook.y + jitter(), camLook.z);
+  } else if (camMode === 'runway') {
+    camera.position.set(-36 + jitter(), 1.3 + jitter(), 0);
+    camLook.lerp(tmpV.set(p.x, Math.max(1.5, p.y), p.z), ease(6));
+    camera.lookAt(camLook);
+  } else if (camMode === 'tele') {
+    camera.position.set(p.x * 0.85 + 2, 2, -95);
+    camLook.lerp(tmpV.set(p.x, p.y, p.z), ease(9));
+    camera.lookAt(camLook);
+  } else if (camMode === 'landing') {
+    camera.position.set(54 + jitter(), 1.1 + jitter(), -7);
+    camLook.lerp(tmpV.set(Math.min(p.x, 50), Math.max(1.4, p.y), p.z), ease(4));
+    camera.lookAt(camLook);
+  } else if (camMode === 'event') {
     camera.position.set(9, 2.2, -42);
     const k = camera.aspect < 1 ? 0.95 : 0.6; // narrow screens track the car more tightly
     const tx = THREE.MathUtils.clamp(p.x * k + (1 - k) * 20, -24, 70);
@@ -648,6 +744,8 @@ function loop(now: number) {
     updateHud(f);
   } else {
     audio.set(0, 1);
+    thrustNow = 0;
+    plumeLight.intensity = 0;
     if (lastFrame) updateHud(lastFrame);
   }
   if (finishedAt >= 0 && !running && sim?.outcome && $('result').hidden && now - finishedAt > 900 / timeScale) {
@@ -657,6 +755,7 @@ function loop(now: number) {
   }
 
   plumes.update(dt);
+  stage.update(car.root.position.x);
   carKey.target.position.copy(car.root.position);
   carKey.position.set(car.root.position.x - 6, 14, -30);
   updateCamera(realDt);

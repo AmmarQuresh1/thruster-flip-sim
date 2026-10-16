@@ -96,6 +96,18 @@ function buildWheel(tyreMat: THREE.Material, rimMat: THREE.Material) {
     b2.position.z = -0.12;
     spin.add(blade, b2);
   }
+  // flat matte aero covers over the blades, with one faint groove so you can see them turn
+  const coverMat = new THREE.MeshStandardMaterial({ color: 0x0b0c0e, roughness: 0.75, metalness: 0.2 });
+  const grooveMat = new THREE.MeshStandardMaterial({ color: 0x24272c, roughness: 0.5, metalness: 0.5 });
+  for (const sz of [-1, 1]) {
+    const cover = new THREE.Mesh(new THREE.CircleGeometry(r * 0.66, 32), coverMat);
+    cover.position.z = sz * 0.14;
+    if (sz < 0) cover.rotation.y = Math.PI;
+    const groove = new THREE.Mesh(new THREE.PlaneGeometry(r * 1.1, 0.012), grooveMat);
+    groove.position.z = sz * 0.142;
+    if (sz < 0) groove.rotation.y = Math.PI;
+    spin.add(cover, groove);
+  }
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.26, 12), rimMat);
   hub.rotation.x = Math.PI / 2;
   spin.add(hub);
