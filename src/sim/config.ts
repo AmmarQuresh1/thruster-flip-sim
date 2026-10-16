@@ -37,8 +37,17 @@ export const CAR = {
 // Compressed-air tank, sitting just behind the seats.
 export const TANK = {
   pos: { x: -0.55, y: 0.05, z: 0 } as Vec3,
-  gasMass: 70, // kg of air at full fill
+  gasMass: 70, // kg of air at full fill (standard tank)
   isp: 65, // s, roughly what a cold-gas air thruster manages at sea level
+};
+
+export type TankMode = 'standard' | 'big' | 'unlimited';
+// 'big' uses the 260 kg figure reported after the event, read as the mass of air carried.
+// 'unlimited' never runs dry and keeps the standard tank's mass, so it handles like the default car.
+export const TANKS: Record<TankMode, { label: string; gas: number; infinite: boolean }> = {
+  standard: { label: 'Standard (70 kg air)', gas: 70, infinite: false },
+  big: { label: 'Big tank (260 kg air)', gas: 260, infinite: false },
+  unlimited: { label: 'Unlimited', gas: 70, infinite: true },
 };
 
 const LIFT = 9000;

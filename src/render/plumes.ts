@@ -39,6 +39,7 @@ export class Plumes {
   private grow = new Float32Array(MAX);
   private peak = new Float32Array(MAX);
   private head = 0;
+  density = 1; // emission multiplier, lowered on slow machines
   private geo: THREE.BufferGeometry;
   private mat: THREE.ShaderMaterial;
 
@@ -68,6 +69,7 @@ export class Plumes {
 
   /** Emit along a jet. origin/dir in world space; carVel adds the car's motion. */
   emit(origin: THREE.Vector3, dir: THREE.Vector3, carVel: THREE.Vector3, count: number, strength: number) {
+    count = Math.max(1, Math.round(count * this.density));
     for (let n = 0; n < count; n++) {
       const i = this.head;
       this.head = (this.head + 1) % MAX;

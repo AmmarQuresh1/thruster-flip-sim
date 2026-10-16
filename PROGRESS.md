@@ -14,6 +14,11 @@ Handoff notes so any session can pick this up without the original chat.
 - GitHub Pages deploy workflow (`.github/workflows/pages.yml`): set Settings → Pages → Source to "GitHub Actions".
 - `npm run build:single` makes a one-file build used for the in-chat preview.
 
+- Tank modes: standard (70 kg), big (260 kg, the figure reported after the event), unlimited. Tank is part of the share code (`~b`, `~u`).
+- Grid editing on desktop: drag a box to fill, start on a lit cell or right-drag to erase, shift-drag freehand. Touch: tap toggles.
+- Quality: pixel count capped, bloom at half res, auto drop to low (no MSAA, smaller shadows, fewer particles) when frames are slow; Quality button to force high/low.
+- Lineup rebuilt from rounded boxes: cab-over semi, pickup, saloons, SUV (all generic).
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).

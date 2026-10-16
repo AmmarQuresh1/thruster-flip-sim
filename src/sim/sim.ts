@@ -6,7 +6,7 @@
 // rotation is done by hand with multiply/add only.
 
 import type RAPIER_NS from '@dimforge/rapier3d-deterministic-compat';
-import { CAR, COURSE, DT, G0, MAX_TIME, SLICE, SLICES, TANK, THRUSTERS, type Vec3 } from './config';
+import { CAR, COURSE, DT, G0, MAX_TIME, SLICE, SLICES, TANK, TANKS, THRUSTERS, type TankMode, type Vec3 } from './config';
 import { type Program } from './program';
 
 type RAPIER = typeof RAPIER_NS;
@@ -65,7 +65,10 @@ export class Sim {
 
   program: Program;
   step = 0;
-  gas = TANK.gasMass;
+  gas: number;
+  readonly capacity: number;
+  readonly infinite: boolean;
+  gasUsed = 0;
   throttle = new Array(THRUSTERS.length).fill(0);
   done = false;
   outcome: Outcome | null = null;
@@ -85,9 +88,12 @@ export class Sim {
   private hitLineup = false;
   private roofHit = false;
 
-  constructor(R: RAPIER, program: Program) {
+  constructor(R: RAPIER, program: Program, tank: TankMode = 'standard') {
     this.R = R;
     this.program = program;
+    this.capacity = TANKS[tank].gas;
+    this.infinite = TANKS[tank].infinite;
+    this.gas = this.capacity;
     const world = new R.World({ x: 0, y: -G0, z: 0 });
     world.timestep = DT;
     this.world = world;
@@ -216,9 +222,12 @@ export class Sim {
         const f = t.force * scale;
         body.addForceAtPoint({ x: d.x * f, y: d.y * f, z: d.z * f }, { x: p.x + lp.x, y: p.y + lp.y, z: p.z + lp.z }, true);
       }
-      this.gas -= want * scale;
-      if (this.gas < 0) this.gas = 0;
-      this.applyGasMass();
+      this.gasUsed += want * scale;
+      if (!this.infinite) {
+        this.gas -= want * scale;
+        if (this.gas < 0) this.gas = 0;
+        this.applyGasMass();
+      }
     } else if (demand > 0) {
       for (let i = 0; i < THRUSTERS.length; i++) this.throttle[i] = 0;
     }
@@ -316,7 +325,7 @@ export class Sim {
       rollTurns,
       pitchTurns,
       yawTurns,
-      gasUsed: TANK.gasMass - this.gas,
+      gasUsed: this.gasUsed,
       touchdownSpeed: this.touchdownSpeed,
       airTime: this.takeoffStep >= 0 && this.landStep >= 0 ? (this.landStep - this.takeoffStep) * DT : 0,
       maxHeight: this.maxHeight,
@@ -369,8 +378,8 @@ export function nameTrick(roll: number, pitch: number, yaw: number): string {
 }
 
 /** Run a whole program headlessly and return the outcome. */
-export function runProgram(R: RAPIER, program: Program, onFrame?: (f: Frame) => void): Outcome {
-  const sim = new Sim(R, program);
+export function runProgram(R: RAPIER, program: Program, onFrame?: (f: Frame) => void, tank: TankMode = 'standard'): Outcome {
+  const sim = new Sim(R, program, tank);
   while (sim.tick()) if (onFrame) onFrame(sim.frame());
   const o = sim.outcome!;
   sim.dispose();

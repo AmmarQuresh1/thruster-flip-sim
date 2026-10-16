@@ -25,7 +25,7 @@ await page.waitForTimeout(1500);
 if (times[0] === 0) await page.screenshot({ path: `shots/${cam}-idle-${width}.png`, timeout: 180000 });
 await page.evaluate(() => (window as any).__flip.setSlow(true));
 await page.evaluate(() => (window as any).__flip.play());
-for (const t of times.filter((x) => x > 0)) {
+for (const t of times.filter((x: number) => x > 0)) {
   await page.waitForFunction((tt) => (window as any).__flip.t >= tt, t, { timeout: 300000, polling: 50 });
   await page.screenshot({ path: `shots/${cam}-t${t.toFixed(1)}-${width}.png`, timeout: 180000 });
 }

@@ -7,9 +7,9 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import R from '@dimforge/rapier3d-deterministic-compat';
 
-import { DT, SLICE, SLICES, TANK, THRUSTERS } from './sim/config';
+import { DT, SLICE, SLICES, TANKS, THRUSTERS, type TankMode } from './sim/config';
 import { Sim, rotate, type Frame, type Outcome } from './sim/sim';
-import { cell, decodeProgram, encodeProgram, isEmpty, setCell, type Program } from './sim/program';
+import { cell, decodeShare, encodeShare, isEmpty, setCell, type Program } from './sim/program';
 import { PRESETS, DEFAULT_PRESET } from './sim/presets';
 import { buildStage, buildLights } from './render/stage';
 import { buildCar } from './render/car';
@@ -22,7 +22,6 @@ const REST_Y = 0.99; // chassis centre height when parked
 // ---------------------------------------------------------------- renderer
 const canvas = $<HTMLCanvasElement>('view');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -57,7 +56,7 @@ function buildEnv() {
 const envMap = buildEnv();
 
 buildStage(scene);
-buildLights(scene);
+const { key: keyLight } = buildLights(scene);
 const carKey = new THREE.DirectionalLight(0xe8eef8, 1.1);
 carKey.position.set(-6, 14, -30);
 scene.add(carKey, carKey.target);
@@ -77,12 +76,49 @@ const controls = new OrbitControls(camera, canvas);
 controls.enabled = false;
 controls.enableDamping = true;
 
+// ---------------------------------------------------------------- quality
+// 'auto' starts high and drops to low if frames are slow. Pixel count is capped either way,
+// because a 4K screen at full resolution is what makes most decent PCs struggle here.
+type Quality = 'auto' | 'high' | 'low';
+let quality: Quality = 'auto';
+let lowActive = false;
+try {
+  const q = localStorage.getItem('tfs-quality');
+  if (q === 'high' || q === 'low' || q === 'auto') quality = q;
+} catch {
+  /* storage blocked */
+}
+function isLow() {
+  return quality === 'low' || (quality === 'auto' && lowActive);
+}
+function pickPixelRatio(w: number, h: number) {
+  const maxPixels = isLow() ? 1.2e6 : 3.2e6;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  return Math.max(0.5, Math.min(dpr, Math.sqrt(maxPixels / (w * h))));
+}
+function applyQuality() {
+  const low = isLow();
+  rt.samples = low ? 0 : 4;
+  const size = low ? 1024 : 2048;
+  if (keyLight.shadow.mapSize.x !== size) {
+    keyLight.shadow.mapSize.set(size, size);
+    keyLight.shadow.map?.dispose();
+    (keyLight.shadow as { map: unknown }).map = null;
+  }
+  plumes.density = low ? 0.5 : 1;
+  resize();
+}
+
 function resize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
+  const dpr = pickPixelRatio(w, h);
+  renderer.setPixelRatio(dpr);
+  composer.setPixelRatio(dpr);
   renderer.setSize(w, h, false);
   composer.setSize(w, h);
-  bloom.setSize(w, h);
+  // bloom is blurry by nature, so render it at half resolution
+  bloom.setSize(Math.round((w * dpr) / 2), Math.round((h * dpr) / 2));
   camera.aspect = w / h;
   // keep the whole jump in shot on tall phone screens
   camera.fov = camera.aspect < 1 ? 62 : camera.aspect < 1.4 ? 48 : 40;
@@ -93,11 +129,12 @@ function resize() {
   plumes.setViewportHeight(h * renderer.getPixelRatio());
 }
 window.addEventListener('resize', resize);
-resize();
+applyQuality();
 
 // ---------------------------------------------------------------- state
 let program: Program = (PRESETS.find((p) => p.id === DEFAULT_PRESET) ?? PRESETS[0]).program();
 let sim: Sim | null = null;
+let tank: TankMode = 'standard';
 let idleFrame: Frame;
 let running = false;
 let acc = 0;
@@ -155,8 +192,11 @@ function paintGrid() {
 }
 buildGrid();
 
-let painting = false;
+let painting = false; // touch: none; shift-drag: freehand
 let paintValue = 1;
+let boxAnchor: [number, number] | null = null;
+let boxEnd: [number, number] | null = null;
+let boxCells: HTMLButtonElement[] = [];
 function cellFrom(el: Element | null): [number, number] | null {
   const b = el?.closest?.('.c') as HTMLElement | null;
   if (!b) return null;
@@ -167,22 +207,72 @@ function applyPaint(rc: [number, number]) {
   cells[rc[0]][rc[1]].classList.toggle('on', paintValue === 1);
   cells[rc[0]][rc[1]].setAttribute('aria-pressed', String(paintValue === 1));
 }
+function clearBoxPreview() {
+  for (const b of boxCells) b.classList.remove('sel-fill', 'sel-erase');
+  boxCells = [];
+}
+function showBox() {
+  clearBoxPreview();
+  if (!boxAnchor || !boxEnd) return;
+  const [r0, r1] = [Math.min(boxAnchor[0], boxEnd[0]), Math.max(boxAnchor[0], boxEnd[0])];
+  const [c0, c1] = [Math.min(boxAnchor[1], boxEnd[1]), Math.max(boxAnchor[1], boxEnd[1])];
+  const cls = paintValue ? 'sel-fill' : 'sel-erase';
+  for (let r = r0; r <= r1; r++)
+    for (let c = c0; c <= c1; c++) {
+      cells[r][c].classList.add(cls);
+      boxCells.push(cells[r][c]);
+    }
+}
+function commitBox() {
+  if (!boxAnchor || !boxEnd) return;
+  const [r0, r1] = [Math.min(boxAnchor[0], boxEnd[0]), Math.max(boxAnchor[0], boxEnd[0])];
+  const [c0, c1] = [Math.min(boxAnchor[1], boxEnd[1]), Math.max(boxAnchor[1], boxEnd[1])];
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) applyPaint([r, c]);
+  clearBoxPreview();
+  boxAnchor = boxEnd = null;
+  markCustom();
+}
+gridEl.addEventListener('contextmenu', (e) => e.preventDefault());
 gridEl.addEventListener('pointerdown', (e) => {
   if (running) return;
   const rc = cellFrom(e.target as Element);
   if (!rc) return;
-  paintValue = cell(program, rc[0], rc[1]) ? 0 : 1;
-  applyPaint(rc);
-  painting = e.pointerType === 'mouse' || e.pointerType === 'pen';
-  markCustom();
   e.preventDefault();
+  const precise = e.pointerType === 'mouse' || e.pointerType === 'pen';
+  // right button always erases; otherwise starting on a lit cell erases and an empty cell fills
+  paintValue = e.button === 2 ? 0 : cell(program, rc[0], rc[1]) ? 0 : 1;
+  if (precise && e.shiftKey) {
+    painting = true; // freehand
+    applyPaint(rc);
+    markCustom();
+  } else if (precise) {
+    boxAnchor = boxEnd = rc; // box select, committed on release
+    showBox();
+  } else {
+    applyPaint(rc); // touch: tap toggles one cell, drag scrolls the grid
+    markCustom();
+  }
 });
-gridEl.addEventListener('pointermove', (e) => {
-  if (!painting) return;
+window.addEventListener('pointermove', (e) => {
+  if (!painting && !boxAnchor) return;
   const rc = cellFrom(document.elementFromPoint(e.clientX, e.clientY));
-  if (rc) applyPaint(rc);
+  if (!rc) return;
+  if (painting) applyPaint(rc);
+  else if (rc[0] !== boxEnd?.[0] || rc[1] !== boxEnd?.[1]) {
+    boxEnd = rc;
+    showBox();
+  }
 });
-window.addEventListener('pointerup', () => (painting = false));
+window.addEventListener('pointerup', () => {
+  painting = false;
+  commitBox();
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && boxAnchor) {
+    clearBoxPreview();
+    boxAnchor = boxEnd = null;
+  }
+});
 gridEl.addEventListener('keydown', (e) => {
   const rc = cellFrom(e.target as Element);
   if (!rc) return;
@@ -228,9 +318,44 @@ sel.addEventListener('change', () => {
   setHint(p.blurb);
   resetRun();
 });
+const fine = window.matchMedia('(pointer: fine)').matches;
+const HOW = fine
+  ? 'Drag a box to fill cells. Start on a lit cell or right-drag to erase. Shift-drag paints freehand.'
+  : 'Tap cells to fire a thruster for 0.1 s. Swipe to scroll the timeline.';
 function setHint(s: string) {
   $('hint').textContent = s;
+  $('hint').title = HOW;
 }
+
+// ---------------------------------------------------------------- tank + quality
+const tankSel = $<HTMLSelectElement>('sel-tank');
+for (const [id, t] of Object.entries(TANKS)) {
+  const o = document.createElement('option');
+  o.value = id;
+  o.textContent = t.label;
+  tankSel.appendChild(o);
+}
+function setTank(t: TankMode) {
+  tank = t;
+  tankSel.value = t;
+}
+tankSel.addEventListener('change', () => {
+  setTank(tankSel.value as TankMode);
+  resetRun();
+});
+const qBtn = $('btn-quality');
+const qNames: Record<Quality, string> = { auto: 'Quality: auto', high: 'Quality: high', low: 'Quality: low' };
+qBtn.textContent = qNames[quality];
+qBtn.addEventListener('click', () => {
+  quality = quality === 'auto' ? 'high' : quality === 'high' ? 'low' : 'auto';
+  qBtn.textContent = qNames[quality];
+  try {
+    localStorage.setItem('tfs-quality', quality);
+  } catch {
+    /* storage blocked */
+  }
+  applyQuality();
+});
 
 // ---------------------------------------------------------------- toast / share
 let toastTimer = 0;
@@ -242,7 +367,7 @@ function toast(msg: string) {
   toastTimer = window.setTimeout(() => (t.hidden = true), 2600);
 }
 async function share() {
-  const code = encodeProgram(program);
+  const code = encodeShare(program, tank);
   try {
     history.replaceState(null, '', '#' + code);
   } catch {
@@ -269,7 +394,7 @@ $('btn-clear').addEventListener('click', () => {
 // ---------------------------------------------------------------- run control
 function resetRun() {
   if (sim) sim.dispose();
-  sim = new Sim(R, program);
+  sim = new Sim(R, program, tank);
   idleFrame = sim.frame();
   running = false;
   finishedAt = -1;
@@ -284,7 +409,7 @@ function resetRun() {
 function play() {
   audio.ensure();
   if (sim) sim.dispose();
-  sim = new Sim(R, program);
+  sim = new Sim(R, program, tank);
   running = true;
   finishedAt = -1;
   acc = 0;
@@ -438,8 +563,9 @@ function updateHud(f: Frame) {
   tmAlt.textContent = Math.max(0, f.pos.y - REST_Y).toFixed(1);
   tmSpd.textContent = Math.round(Math.hypot(f.vel.x, f.vel.y, f.vel.z) * 3.6).toString();
   tmRoll.textContent = Math.round(Math.abs(liveRoll) * 360).toString();
-  const frac = f.gas / TANK.gasMass;
-  tmPsi.textContent = Math.round(10000 * frac).toLocaleString('en-GB');
+  const cap = TANKS[tank].gas;
+  const frac = TANKS[tank].infinite ? 1 : f.gas / cap;
+  tmPsi.textContent = TANKS[tank].infinite ? '∞' : Math.round(10000 * frac).toLocaleString('en-GB');
   tmGas.style.width = `${frac * 100}%`;
   tmGas.classList.toggle('low', frac < 0.2);
 }
@@ -478,9 +604,25 @@ function updateCamera(dt: number) {
 }
 
 let prev = performance.now();
+let slowFrames = 0;
+let sampled = 0;
 function loop(now: number) {
-  const realDt = Math.min(0.05, (now - prev) / 1000);
+  const raw = (now - prev) / 1000;
+  const realDt = Math.min(0.05, raw);
   prev = now;
+  // auto quality: if most frames over ~2 s run slower than ~40 fps, drop to low once
+  if (quality === 'auto' && !lowActive && !document.hidden && raw < 0.5) {
+    sampled++;
+    if (raw > 0.025) slowFrames++;
+    if (sampled === 120) {
+      if (slowFrames > 70) {
+        lowActive = true;
+        applyQuality();
+        toast('Switched to low quality to keep it smooth. Change it with the Quality button.');
+      }
+      sampled = slowFrames = 0;
+    }
+  }
   const dt = realDt * timeScale;
 
   if (running && sim) {
@@ -525,9 +667,10 @@ function loop(now: number) {
 // ---------------------------------------------------------------- boot
 async function boot() {
   await R.init();
-  const fromHash = decodeProgram(location.hash.slice(1));
+  const fromHash = decodeShare(location.hash.slice(1));
   if (fromHash) {
-    program = fromHash;
+    program = fromHash.program;
+    setTank(fromHash.tank);
     markCustom();
     setHint('Loaded a shared flip. Press Play.');
   } else {
@@ -535,7 +678,8 @@ async function boot() {
     const p = PRESETS.find((x) => x.id === sel.value);
     if (p) setHint(p.blurb);
   }
-  if (isEmpty(program)) setHint('Tap or drag cells to fire a thruster for 0.1 s. Time runs left to right.');
+  if (isEmpty(program)) setHint(HOW);
+  $('how').textContent = HOW;
   paintGrid();
   resetRun();
   $('loading').hidden = true;

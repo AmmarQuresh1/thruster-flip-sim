@@ -39,6 +39,7 @@
         <button id="btn-slow" class="tool" aria-pressed="false" title="Slow motion (S)">Slow-mo</button>
         <button id="btn-sound" class="tool" aria-pressed="true" title="Sound">Sound on</button>
         <button id="btn-rec" class="tool rec" aria-pressed="false" title="Record the next run as a video clip">● Record run</button>
+        <button id="btn-quality" class="tool" title="Lower quality if it stutters">Quality: auto</button>
       </div>
 
       <section class="result" id="result" hidden>
@@ -66,10 +67,15 @@
             <span>Preset</span>
             <select id="sel-preset"></select>
           </label>
+          <label class="preset">
+            <span>Tank</span>
+            <select id="sel-tank"></select>
+          </label>
           <button id="btn-clear" class="btn ghost">Clear grid</button>
           <button id="btn-share" class="btn ghost">Copy link</button>
           <p class="hint" id="hint">Tap or drag cells to fire a thruster for 0.1 s. Time runs left to right.</p>
         </div>
+        <p class="how" id="how"></p>
         <div class="grid-wrap">
           <div class="grid" id="grid"></div>
         </div>

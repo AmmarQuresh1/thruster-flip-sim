@@ -1,4 +1,4 @@
-import { SLICES, THRUSTERS } from './config';
+import { SLICES, THRUSTERS, type TankMode } from './config';
 
 // A program is a grid of on/off cells: one row per thruster, one column per time slice.
 export type Program = Uint8Array; // length THRUSTERS.length * SLICES, row-major
@@ -36,7 +36,7 @@ export function encodeProgram(p: Program): string {
 export function decodeProgram(s: string): Program | null {
   try {
     if (!s.startsWith('1.')) return null;
-    const b64 = s.slice(2).replace(/-/g, '+').replace(/_/g, '/');
+    const b64 = s.slice(2).split('~')[0].replace(/-/g, '+').replace(/_/g, '/');
     const bin = atob(b64 + '==='.slice((b64.length + 3) % 4));
     const p = emptyProgram();
     for (let i = 0; i < p.length; i++) {
@@ -47,6 +47,18 @@ export function decodeProgram(s: string): Program | null {
   } catch {
     return null;
   }
+}
+
+// Share codes may carry a tank suffix: "~b" (big) or "~u" (unlimited). No suffix = standard.
+export function encodeShare(p: Program, tank: TankMode): string {
+  return encodeProgram(p) + (tank === 'big' ? '~b' : tank === 'unlimited' ? '~u' : '');
+}
+
+export function decodeShare(s: string): { program: Program; tank: TankMode } | null {
+  const program = decodeProgram(s);
+  if (!program) return null;
+  const suf = s.split('~')[1];
+  return { program, tank: suf === 'b' ? 'big' : suf === 'u' ? 'unlimited' : 'standard' };
 }
 
 // Build a program from a compact description: { rowId: [[fromSlice, toSliceExclusive], ...] }

@@ -1,6 +1,7 @@
 // The night-time demo set: ground, stage platform with LED strip, kicker ramp,
 // an unbranded parked lineup, floodlight rigs, a power line, and a few drone lights.
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { COURSE } from '../sim/config';
 
 const ASPHALT = 0x0a0b0d;
@@ -28,77 +29,85 @@ function noiseTexture(size = 256, base = 18, spread = 10) {
   return t;
 }
 
-/** Generic parked vehicle: extruded side profile, dark paint, a white light bar facing the camera. */
+/**
+ * Generic parked vehicles, built from rounded boxes. Nose faces -z (toward the event camera).
+ * Deliberately unbranded: a cab-over semi tractor, a pickup, a saloon and an SUV.
+ */
+const PAINT: Record<string, number> = { sedan: 0x1a2130, sedan2: 0x2a2c31, truck: 0xc4c8ce, pickup: 0x2c3431, suv: 0x7d6c52 };
+let sedanCount = 0;
+
+function rbox(w: number, h: number, d: number, r: number, mat: THREE.Material) {
+  const m = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2, h / 2, d / 2)), mat);
+  m.castShadow = m.receiveShadow = true;
+  return m;
+}
+
 function parkedVehicle(kind: string, w: number, h: number, l: number) {
   const g = new THREE.Group();
-  const paint = new THREE.MeshPhysicalMaterial({ color: kind === 'truck' ? 0x9ea3aa : 0x16191e, roughness: 0.35, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.2 });
-  const glass = new THREE.MeshPhysicalMaterial({ color: 0x05070a, roughness: 0.08, metalness: 0.4 });
-  const tyre = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9 });
-
-  // profile in the (z, y) plane, nose toward -z (the camera)
-  const s = new THREE.Shape();
+  const colorKey = kind === 'sedan' && sedanCount++ % 2 === 1 ? 'sedan2' : kind;
+  const paint = new THREE.MeshPhysicalMaterial({ color: PAINT[colorKey] ?? 0x1a1d22, roughness: 0.3, metalness: 0.45, clearcoat: 1, clearcoatRoughness: 0.12 });
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0x06080b, roughness: 0.05, metalness: 0.5, clearcoat: 1 });
+  const trim = new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 0.6, metalness: 0.4 });
+  const tyre = new THREE.MeshStandardMaterial({ color: 0x060606, roughness: 0.9 });
+  const rim = new THREE.MeshStandardMaterial({ color: 0x2a2d33, roughness: 0.3, metalness: 0.8 });
+  const white = emissive(0xeaf4ff, 5);
+  const amber = emissive(0xffa040, 5);
   const L = l / 2;
+  const at = (m: THREE.Object3D, x: number, y: number, z: number) => (m.position.set(x, y, z), g.add(m), m);
+
+  const wheel = (r: number, width: number, x: number, z: number) => {
+    const wg = new THREE.Group();
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, width, 24), tyre);
+    t.rotation.z = Math.PI / 2;
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.62, r * 0.62, width + 0.02, 20), rim);
+    hub.rotation.z = Math.PI / 2;
+    wg.add(t, hub);
+    at(wg, x, r, z);
+  };
+
   if (kind === 'truck') {
-    // tall cab-over tractor unit
-    s.moveTo(-L, 0.45);
-    s.lineTo(L, 0.45);
-    s.lineTo(L, h * 0.92);
-    s.lineTo(-L + 0.6, h);
-    s.lineTo(-L, h * 0.8);
-    s.closePath();
+    // cab-over semi tractor
+    at(rbox(w * 0.86, 0.45, l * 0.96, 0.05, trim), 0, 0.85, 0); // frame rails
+    at(rbox(w, 2.3, 2.3, 0.18, paint), 0, 2.25, -L + 1.15); // cab
+    at(rbox(w * 0.97, 2.5, 1.7, 0.16, paint), 0, 2.45, -L + 3.1); // sleeper
+    const fair = at(rbox(w * 0.96, 0.7, 2.1, 0.25, paint), 0, 3.62, -L + 1.6); // roof fairing
+    fair.rotation.x = 0.18;
+    const ws = at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.84, 0.95, 0.04), glass), 0, 2.8, -L - 0.01); // windshield
+    ws.rotation.x = -0.06;
+    for (const sx of [-1, 1]) at(new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 1.0), glass), sx * (w / 2 + 0.005), 2.75, -L + 0.75); // door glass
+    at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.56, 0.75, 0.05), trim), 0, 1.65, -L - 0.02); // grille
+    at(rbox(w * 1.02, 0.38, 0.32, 0.08, trim), 0, 0.9, -L - 0.05); // bumper
+    for (const sx of [-1, 1]) {
+      at(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.12, 0.03), white), sx * (w / 2 - 0.35), 1.25, -L - 0.04); // headlamps
+      const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.3, 20), rim);
+      tank.rotation.x = Math.PI / 2;
+      at(tank, sx * (w / 2 - 0.25), 0.82, -L + 3.2); // fuel tanks
+    }
+    at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.8, 0.04, 0.03), white), 0, 3.42, -L - 0.03); // light bar above screen
+    for (let i = -2; i <= 2; i++) at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.03), amber), i * 0.36, 3.95, -L + 0.65);
+    wheel(0.52, 0.32, -(w / 2 - 0.2), -L + 1.0);
+    wheel(0.52, 0.32, w / 2 - 0.2, -L + 1.0);
+    for (const z of [L - 1.75, L - 0.6]) for (const sx of [-1, 1]) wheel(0.52, 0.55, sx * (w / 2 - 0.32), z);
   } else if (kind === 'pickup') {
-    s.moveTo(-L, 0.35);
-    s.lineTo(L, 0.35);
-    s.lineTo(L, h * 0.62);
-    s.lineTo(L * 0.05, h * 0.62);
-    s.lineTo(-L * 0.15, h);
-    s.lineTo(-L * 0.55, h * 0.72);
-    s.lineTo(-L, h * 0.64);
-    s.closePath();
+    at(rbox(w, 0.78, l, 0.14, paint), 0, 0.95, 0); // lower body
+    at(rbox(w * 0.9, 0.72, 2.0, 0.16, glass), 0, 1.66, -L + 2.35); // cab glasshouse
+    at(rbox(w * 0.86, 0.08, 1.55, 0.04, paint), 0, 2.03, -L + 2.4); // roof
+    at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.84, 0.06, 1.95), trim), 0, 1.33, L - 1.05); // bed floor
+    for (const sx of [-1, 1]) at(rbox(0.1, 0.2, 2.1, 0.03, paint), sx * (w / 2 - 0.06), 1.42, L - 1.05); // bed rails
+    at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.04, 0.03), white), 0, 1.2, -L - 0.02);
+    for (const z of [-L + 1.0, L - 0.95]) for (const sx of [-1, 1]) wheel(0.44, 0.3, sx * (w / 2 - 0.12), z);
   } else {
-    const roofF = kind === 'suv' ? -0.35 : -0.25;
-    s.moveTo(-L, 0.32);
-    s.lineTo(L, 0.32);
-    s.lineTo(L, h * 0.6);
-    s.lineTo(L * 0.45, h);
-    s.lineTo(L * roofF, h);
-    s.lineTo(-L * 0.6, h * 0.62);
-    s.lineTo(-L, h * 0.55);
-    s.closePath();
+    const suv = kind === 'suv';
+    const bodyH = suv ? 0.78 : 0.6;
+    at(rbox(w, bodyH, l, 0.2, paint), 0, 0.32 + bodyH / 2, 0);
+    const ghH = suv ? 0.62 : 0.5;
+    const ghL = suv ? l * 0.62 : l * 0.48;
+    const ghZ = suv ? L * 0.08 : -L * 0.02;
+    at(rbox(w * 0.86, ghH, ghL, 0.2, glass), 0, 0.32 + bodyH + ghH / 2 - 0.04, ghZ); // glasshouse
+    at(rbox(w * 0.8, 0.07, ghL * 0.8, 0.03, paint), 0, 0.32 + bodyH + ghH - 0.06, ghZ); // roof
+    at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.035, 0.03), white), 0, 0.32 + bodyH * 0.75, -L - 0.02); // light bar
+    for (const z of [-L + 0.95, L - 0.95]) for (const sx of [-1, 1]) wheel(0.36, 0.24, sx * (w / 2 - 0.1), z);
   }
-  const body = new THREE.ExtrudeGeometry(s, { depth: w * 0.94, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 2 });
-  body.translate(0, 0, -w * 0.47);
-  body.rotateY(Math.PI / 2); // profile x -> world z
-  const bm = new THREE.Mesh(body, paint);
-  bm.castShadow = bm.receiveShadow = true;
-  g.add(bm);
-
-  // dark glass band
-  const gb = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, h * 0.22, l * 0.4), glass);
-  gb.position.set(0, h * 0.78, kind === 'truck' ? -L + 0.4 : -L * 0.05);
-  if (kind !== 'truck') g.add(gb);
-
-  // front light bar (faces -z)
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(w * 0.86, 0.035, 0.02), emissive(0xeaf4ff, 5));
-  bar.position.set(0, kind === 'truck' ? h * 0.33 : h * 0.52, -L - 0.07);
-  g.add(bar);
-  if (kind === 'truck') {
-    // marker lamps along the cab roof
-    for (let i = -2; i <= 2; i++) {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.03), emissive(0xffa040, 6));
-      m.position.set(i * 0.38, h * 0.97, -L + 0.5);
-      g.add(m);
-    }
-  }
-  // wheels (visible as dark discs from the front three-quarter)
-  const wg = new THREE.CylinderGeometry(0.36, 0.36, 0.28, 20);
-  wg.rotateZ(Math.PI / 2);
-  for (const sx of [-1, 1])
-    for (const sz of [-1, 1]) {
-      const t = new THREE.Mesh(wg, tyre);
-      t.position.set(sx * (w / 2 - 0.1), 0.36, sz * (L - 0.85));
-      g.add(t);
-    }
   return g;
 }
 
@@ -285,7 +294,7 @@ export function buildLights(scene: THREE.Scene) {
   scene.add(front, front.target);
 
   // red bounce from the LED strip
-  const red = new THREE.PointLight(0xff2a3a, 6, 14, 1.8);
+  const red = new THREE.PointLight(0xff2a3a, 2, 10, 2);
   red.position.set(13, 0.6, -5.5);
   scene.add(red);
 
