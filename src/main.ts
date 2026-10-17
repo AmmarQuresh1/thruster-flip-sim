@@ -954,7 +954,7 @@ function loop(now: number) {
   plumes.update(dt);
   stage.update(car.root.position.x);
   carKey.target.position.copy(car.root.position);
-  carKey.position.set(car.root.position.x - 6, 14, -30);
+  carKey.position.set(car.root.position.x - 6, car.root.position.y + 13, -30); // stays above the car, even on huge jumps
   updateCamera(realDt);
   composer.render();
   requestAnimationFrame(loop);
