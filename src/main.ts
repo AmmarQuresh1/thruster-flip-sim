@@ -148,7 +148,6 @@ let program: Program = (PRESETS.find((p) => p.id === DEFAULT_PRESET) ?? PRESETS[
 let sim: Sim | null = null;
 let tank: TankMode = 'standard';
 let ramp = false;
-let freeSpin = false;
 let idleFrame: Frame;
 let running = false;
 let acc = 0;
@@ -355,7 +354,6 @@ sel.addEventListener('change', () => {
   program = p.program();
   setTank('standard'); // presets are tuned for the standard tank
   setRamp(!!p.ramp);
-  setFreeSpin(false); // presets are tuned with the heading locked
   paintGrid();
   setHint(p.blurb);
   resetRun();
@@ -391,15 +389,6 @@ rampBox.addEventListener('change', () => {
   setRamp(rampBox.checked);
   resetRun();
 });
-const spinBox = $<HTMLInputElement>('chk-spin');
-function setFreeSpin(on: boolean) {
-  freeSpin = on;
-  spinBox.checked = on;
-}
-spinBox.addEventListener('change', () => {
-  setFreeSpin(spinBox.checked);
-  resetRun();
-});
 tankSel.addEventListener('change', () => {
   setTank(tankSel.value as TankMode);
   resetRun();
@@ -428,7 +417,7 @@ function toast(msg: string) {
   toastTimer = window.setTimeout(() => (t.hidden = true), 2600);
 }
 async function share() {
-  const code = encodeShare(program, tank, ramp, freeSpin);
+  const code = encodeShare(program, tank, ramp);
   try {
     history.replaceState(null, '', '#' + code);
   } catch {
@@ -455,7 +444,7 @@ $('btn-clear').addEventListener('click', () => {
 // ---------------------------------------------------------------- run control
 function resetRun() {
   if (sim) sim.dispose();
-  sim = new Sim(R, program, tank, ramp, freeSpin);
+  sim = new Sim(R, program, tank, ramp);
   idleFrame = sim.frame();
   running = false;
   finishedAt = -1;
@@ -475,7 +464,7 @@ function resetRun() {
 function play() {
   audio.ensure();
   if (sim) sim.dispose();
-  sim = new Sim(R, program, tank, ramp, freeSpin);
+  sim = new Sim(R, program, tank, ramp);
   running = true;
   finishedAt = -1;
   acc = 0;
@@ -795,7 +784,6 @@ async function boot() {
     program = fromHash.program;
     setTank(fromHash.tank);
     setRamp(fromHash.ramp);
-    setFreeSpin(fromHash.freeSpin);
     markCustom();
     setHint('Loaded a shared flip. Press Play.');
   } else {

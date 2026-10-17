@@ -15,6 +15,7 @@ type Quat = { x: number; y: number; z: number; w: number };
 const STEPS_PER_SLICE = Math.round(SLICE / DT); // 12
 const PROGRAM_STEPS = STEPS_PER_SLICE * SLICES;
 const MAX_STEPS = Math.round(MAX_TIME / DT);
+const LAND_MARGIN_COS = 0.9396926; // cos 20°: land within 20° of straight (or of backwards) or spin out
 const LINEUP_END = Math.max(...COURSE.lineup.map((v) => v.x + v.w / 2)) + 2;
 const LINEUP_START = Math.min(...COURSE.lineup.map((v) => v.x - v.w / 2));
 
@@ -36,6 +37,8 @@ export interface Outcome {
   trick: string;
   rollTurns: number; // signed turns about the car's long axis (net)
   peakTurns: number;
+  landingHeading: number; // degrees between the nose and the lane at touchdown (folded, 0-90; backwards counts as 0)
+  fakie: boolean; // landed and rolled away backwards
   rotationAtLift: number; // turns already rotated when the car was 2 m up; near 0 means it lifted before flipping // largest rotation reached on any axis at any moment; a roll there and back nets to zero but still shows here
   pitchTurns: number;
   yawTurns: number;
@@ -101,10 +104,15 @@ export class Sim {
   private wasGrounded = false;
   private wentAround = false;
 
-  readonly freeSpin: boolean;
+  // Heading rule: locked to the lane while touching the ground, free in the air. On touchdown,
+  // within LAND_MARGIN of straight (or of backwards) it eases back into lane; otherwise it spins out.
+  private airPhase = false;
+  private spunOut = false;
+  private landHeadingCos = 1;
+  private yawRate = 0; // rad/s about world up, driven only by uneven rear jets while airborne
+  private boostYawTorque = 0; // this step's torque about world up from the rear jets
 
-  constructor(R: RAPIER, program: Program, tank: TankMode = 'standard', ramp = false, freeSpin = false) {
-    this.freeSpin = freeSpin;
+  constructor(R: RAPIER, program: Program, tank: TankMode = 'standard', ramp = false) {
     this.R = R;
     this.program = program;
     this.capacity = TANKS[tank].gas;
@@ -191,7 +199,7 @@ export class Sim {
    * and about the lane's side axis (flips), but any other spin is removed, and any heading the
    * solver lets creep in is rotated back out. Only multiply/add/sqrt, so it stays deterministic.
    */
-  private lockHeading() {
+  private lockHeading(blend = 1) {
     const b = this.body;
     let q = b.rotation();
     let f = rotate(q, { x: 1, y: 0, z: 0 });
@@ -207,12 +215,16 @@ export class Sim {
       const cx = f.y * mz - f.z * my;
       const cy = f.z * mx - f.x * mz;
       const cz = f.x * my - f.y * mx;
+      // partial correction: nlerp between no rotation and the full correction
+      let pw = 1 - blend + blend * cw, px = blend * cx, py = blend * cy, pz = blend * cz;
+      const pl = Math.sqrt(pw * pw + px * px + py * py + pz * pz);
+      const cw2 = pw / pl, cx2 = px / pl, cy2 = py / pl, cz2 = pz / pl;
       // corrected = c * q
       const nq = {
-        w: cw * q.w - cx * q.x - cy * q.y - cz * q.z,
-        x: cw * q.x + cx * q.w + cy * q.z - cz * q.y,
-        y: cw * q.y - cx * q.z + cy * q.w + cz * q.x,
-        z: cw * q.z + cx * q.y - cy * q.x + cz * q.w,
+        w: cw2 * q.w - cx2 * q.x - cy2 * q.y - cz2 * q.z,
+        x: cw2 * q.x + cx2 * q.w + cy2 * q.z - cz2 * q.y,
+        y: cw2 * q.y - cx2 * q.z + cy2 * q.w + cz2 * q.x,
+        z: cw2 * q.z + cx2 * q.y - cy2 * q.x + cz2 * q.w,
       };
       const n = Math.sqrt(nq.w * nq.w + nq.x * nq.x + nq.y * nq.y + nq.z * nq.z);
       q = { x: nq.x / n, y: nq.y / n, z: nq.z / n, w: nq.w / n };
@@ -225,6 +237,76 @@ export class Sim {
     const w = b.angvel();
     const along = w.x * fx + w.y * fy;
     b.setAngvel({ x: along * fx, y: along * fy, z: w.z }, true);
+  }
+
+  /**
+   * In the air, split the spin into roll (about the nose), flip (about the side axis laid flat)
+   * and yaw (about world up). Roll and flip are left to the physics; yaw is replaced by a rate that
+   * only the rear jets can change, so rolling and flipping can't twist the nose by themselves.
+   */
+  private airSpin() {
+    const b = this.body;
+    const q = b.rotation();
+    const f = rotate(q, { x: 1, y: 0, z: 0 });
+    const u = rotate(q, { x: 0, y: 1, z: 0 });
+    const r = rotate(q, { x: 0, y: 0, z: 1 });
+    // moment of inertia about world up, from the body's principal moments
+    const I = b.principalInertia();
+    const Iyy = I.x * f.y * f.y + I.y * u.y * u.y + I.z * r.y * r.y;
+    if (Iyy > 1e-6) this.yawRate += (this.boostYawTorque / Iyy) * DT;
+    // Split the spin along three axes tied to the car: the nose (roll), the side axis laid flat
+    // (flip), and m = nose x side, which swings the nose left/right. Roll and flip stay as the
+    // physics made them; the swing is set from the rear-jet yaw rate. Well-conditioned at any
+    // attitude (a world-up yaw becomes pure roll when the nose points straight up, hence * fh).
+    const fh = Math.sqrt(f.x * f.x + f.z * f.z);
+    let nx: number, ny: number, nz: number;
+    if (fh > 1e-4) {
+      nx = -f.z / fh; ny = 0; nz = f.x / fh;
+      // keep the side axis on the car's right so it doesn't flip over when the nose passes vertical
+      if (nx * r.x + nz * r.z < 0) { nx = -nx; nz = -nz; }
+    } else {
+      nx = r.x; ny = r.y; nz = r.z; // nose vertical: use the car's own side axis
+    }
+    const mx = f.y * nz - f.z * ny, my = f.z * nx - f.x * nz, mz = f.x * ny - f.y * nx;
+    const w = b.angvel();
+    const roll = w.x * f.x + w.y * f.y + w.z * f.z;
+    const flip = w.x * nx + w.y * ny + w.z * nz;
+    const swing = this.yawRate * my; // the world-up yaw rate, seen along the car's swing axis
+    b.setAngvel(
+      {
+        x: roll * f.x + flip * nx + swing * mx,
+        y: roll * f.y + flip * ny + swing * my,
+        z: roll * f.z + flip * nz + swing * mz,
+      },
+      true,
+    );
+  }
+
+  private applyHeadingRule() {
+    if (this.spunOut) return; // landed sideways: physics only from here on
+    const touching = this.airborneSteps === 0;
+    if (!touching) {
+      // just leaving the ground: keep the lock for a few steps so the tyres can't twist it on the way up
+      if (this.airborneSteps > 3) {
+        if (!this.airPhase) this.yawRate = 0;
+        this.airPhase = true;
+        this.airSpin();
+      } else this.lockHeading();
+      return;
+    }
+    if (this.airPhase) {
+      // touchdown after a flight: how far off the lane is the nose? (compared via cos, no trig)
+      this.airPhase = false;
+      const f = rotate(this.body.rotation(), { x: 1, y: 0, z: 0 });
+      const n = Math.sqrt(f.x * f.x + f.z * f.z);
+      const c = n > 1e-6 ? Math.abs(f.x) / n : 0;
+      this.landHeadingCos = c;
+      if (c < LAND_MARGIN_COS) {
+        this.spunOut = true;
+        return;
+      }
+    }
+    this.lockHeading(0.25); // ease back into the lane over a few steps
   }
 
   get time() {
@@ -272,7 +354,9 @@ export class Sim {
       if (this.gas <= 0) scale = 0;
       else if (want > this.gas) scale = this.gas / want;
     }
+    this.boostYawTorque = 0;
     if (demand > 0 && scale > 0) {
+      const com = body.worldCom();
       for (let i = 0; i < THRUSTERS.length; i++) {
         if (!this.throttle[i]) continue;
         const t = THRUSTERS[i];
@@ -281,6 +365,11 @@ export class Sim {
         const lp = rotate(q, t.pos);
         const f = t.force * scale;
         body.addForceAtPoint({ x: d.x * f, y: d.y * f, z: d.z * f }, { x: p.x + lp.x, y: p.y + lp.y, z: p.z + lp.z }, true);
+        if (t.group === 'boost') {
+          // torque about world up: (r × F).y with r from the centre of mass
+          const rx = p.x + lp.x - com.x, rz = p.z + lp.z - com.z;
+          this.boostYawTorque += rz * d.x * f - rx * d.z * f;
+        }
       }
       this.gasUsed += want * scale;
       if (!this.infinite) {
@@ -300,7 +389,7 @@ export class Sim {
     this.vehicle.updateVehicle(DT);
     this.world.step();
     this.step++;
-    if (!this.freeSpin) this.lockHeading();
+    this.applyHeadingRule();
 
     // --- tracking ---
     const v = body.linvel();
@@ -308,17 +397,17 @@ export class Sim {
     const q2 = body.rotation();
     const fwd = rotate(q2, { x: 1, y: 0, z: 0 });
     const up = rotate(q2, { x: 0, y: 1, z: 0 });
-    const right = rotate(q2, { x: 0, y: 0, z: 1 });
     const TAU = 6.283185307179586;
     // Kickflip = spin about the car's own long axis; flip = spin about the lane's side axis (world z).
     this.roll += ((w.x * fwd.x + w.y * fwd.y + w.z * fwd.z) * DT) / TAU;
-    if (this.freeSpin) {
-      this.pitch += ((w.x * right.x + w.y * right.y + w.z * right.z) * DT) / TAU;
-      this.yaw += ((w.x * up.x + w.y * up.y + w.z * up.z) * DT) / TAU;
-    } else {
-      this.pitch += (w.z * DT) / TAU;
-      this.yaw = 0; // heading is locked to the lane
-    }
+    // flips are about the car's side axis laid flat on the ground; spins are about world up
+    const fn = Math.sqrt(fwd.x * fwd.x + fwd.z * fwd.z);
+    const rgt = rotate(q2, { x: 0, y: 0, z: 1 });
+    let sx = fn > 1e-3 ? -fwd.z / fn : rgt.x;
+    let sz = fn > 1e-3 ? fwd.x / fn : rgt.z;
+    if (sx * rgt.x + sz * rgt.z < 0) { sx = -sx; sz = -sz; }
+    this.pitch += ((w.x * sx + w.z * sz) * DT) / TAU;
+    if (this.airPhase) this.yaw += (this.yawRate * DT) / TAU; // only spin done in the air counts towards the trick
 
     const ar = Math.max(Math.abs(this.roll), Math.abs(this.pitch), Math.abs(this.yaw));
     if (ar > this.peak) this.peak = ar;
@@ -396,6 +485,9 @@ export class Sim {
     } else if (x < LINEUP_END) {
       status = 'crashed';
       reason = 'Came down short of the lineup';
+    } else if (this.spunOut) {
+      status = upY < 0.7 || this.roofHit ? 'rolled' : 'crashed';
+      reason = 'Landed sideways and spun out';
     } else if (upY < 0.7 || this.roofHit) {
       status = 'rolled';
       reason = upY < 0.7 ? 'Ended up on its roof' : 'Touched down on the roof';
@@ -418,6 +510,8 @@ export class Sim {
       trick,
       rollTurns,
       peakTurns: this.peak,
+      landingHeading: (Math.acos(Math.max(-1, Math.min(1, this.landHeadingCos))) * 180) / Math.PI,
+      fakie: this.landStep >= 0 && !this.spunOut && rotate(this.body.rotation(), { x: 1, y: 0, z: 0 }).x < 0,
       rotationAtLift: Math.max(0, this.rotAtLift),
       pitchTurns,
       yawTurns,
@@ -482,9 +576,8 @@ export function runProgram(
   onFrame?: (f: Frame) => void,
   tank: TankMode = 'standard',
   ramp = false,
-  freeSpin = false,
 ): Outcome {
-  const sim = new Sim(R, program, tank, ramp, freeSpin);
+  const sim = new Sim(R, program, tank, ramp);
   while (sim.tick()) if (onFrame) onFrame(sim.frame());
   const o = sim.outcome!;
   sim.dispose();

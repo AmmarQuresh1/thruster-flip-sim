@@ -7,7 +7,6 @@ import { runProgram, type Outcome } from '../src/sim/sim';
 import type { TankMode } from '../src/sim/config';
 const TANK_MODE = (process.env.TANK ?? 'standard') as TankMode;
 const RAMP = process.env.RAMP === '1';
-const FREE_SPIN = process.env.SPIN === '1';
 import { decodeProgram, emptyProgram, encodeProgram, setCell } from '../src/sim/program';
 
 await R.init();
@@ -26,6 +25,8 @@ const TARGETS: Record<string, { roll: number; pitch: number; yaw: number; soft?:
   event: { roll: 1, pitch: 0, yaw: 0, soft: true },
   double: { roll: 2, pitch: 0, yaw: 0 },
   triple: { roll: 3, pitch: 0, yaw: 0 },
+  '360': { roll: 1, pitch: 0, yaw: 1 },
+  '180': { roll: 1, pitch: 0, yaw: 0.5 },
   backflip: { roll: 0, pitch: 1, yaw: 0 },
   hover: { roll: 0, pitch: 0, yaw: 0, soft: true },
 };
@@ -45,7 +46,7 @@ function score(o: Outcome): number {
   if (o.hitLineup) s -= 60;
   s -= 40 * Math.abs(Math.abs(o.rollTurns) - T.roll);
   s -= 40 * Math.abs(Math.abs(o.pitchTurns) - T.pitch);
-  s -= 20 * Math.abs(Math.abs(o.yawTurns) - T.yaw);
+  s -= 40 * Math.abs(Math.abs(o.yawTurns) - T.yaw);
   s -= 0.25 * o.gasUsed;
   // reward clean, level touchdowns
   if (o.status === 'landed') s -= 0.6 * o.landingTilt + 25 * o.bounces;
@@ -124,12 +125,12 @@ function fromCode(code: string): Genome {
   return g;
 }
 let best = process.env.FROM ? fromCode(process.env.FROM) : seedGenome();
-let bestO = runProgram(R, toProgram(best), undefined, TANK_MODE, RAMP, FREE_SPIN);
+let bestO = runProgram(R, toProgram(best), undefined, TANK_MODE, RAMP);
 let bestS = score(bestO);
 let cur = best, curS = bestS;
 for (let i = 0; i < iters; i++) {
   const cand = mutate(cur);
-  const o = runProgram(R, toProgram(cand), undefined, TANK_MODE, RAMP, FREE_SPIN);
+  const o = runProgram(R, toProgram(cand), undefined, TANK_MODE, RAMP);
   const s = score(o);
   // accept improvements, occasionally sideways moves
   if (s >= curS || rand() < 0.02) { cur = cand; curS = s; }

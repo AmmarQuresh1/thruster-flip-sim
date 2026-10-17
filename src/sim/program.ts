@@ -49,18 +49,18 @@ export function decodeProgram(s: string): Program | null {
   }
 }
 
-// Share codes may carry a settings suffix after "~": "b" big tank, "u" unlimited tank, "r" ramp on,
-// "s" free spin (heading not locked). No suffix = standard tank, no ramp, heading locked.
-export function encodeShare(p: Program, tank: TankMode, ramp = false, freeSpin = false): string {
-  const flags = (tank === 'big' ? 'b' : tank === 'unlimited' ? 'u' : '') + (ramp ? 'r' : '') + (freeSpin ? 's' : '');
+// Share codes may carry a settings suffix after "~": "b" big tank, "u" unlimited tank, "r" ramp on.
+// No suffix = standard tank, no ramp.
+export function encodeShare(p: Program, tank: TankMode, ramp = false): string {
+  const flags = (tank === 'big' ? 'b' : tank === 'unlimited' ? 'u' : '') + (ramp ? 'r' : '');
   return encodeProgram(p) + (flags ? '~' + flags : '');
 }
 
-export function decodeShare(s: string): { program: Program; tank: TankMode; ramp: boolean; freeSpin: boolean } | null {
+export function decodeShare(s: string): { program: Program; tank: TankMode; ramp: boolean } | null {
   const program = decodeProgram(s);
   if (!program) return null;
   const suf = s.split('~')[1] ?? '';
-  return { program, tank: suf.includes('b') ? 'big' : suf.includes('u') ? 'unlimited' : 'standard', ramp: suf.includes('r'), freeSpin: suf.includes('s') };
+  return { program, tank: suf.includes('b') ? 'big' : suf.includes('u') ? 'unlimited' : 'standard', ramp: suf.includes('r') };
 }
 
 // Build a program from a compact description: { rowId: [[fromSlice, toSliceExclusive], ...] }
