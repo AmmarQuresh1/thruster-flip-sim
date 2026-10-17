@@ -175,6 +175,47 @@ export class Sim {
     this.body.setAdditionalMassProperties(m, TANK.pos, { x: r2, y: r2, z: r2 }, { x: 0, y: 0, z: 0, w: 1 }, true);
   }
 
+  /**
+   * Keep the nose pointing along the lane. The car may spin about its own long axis (kickflips)
+   * and about the lane's side axis (flips), but any other spin is removed, and any heading the
+   * solver lets creep in is rotated back out. Only multiply/add/sqrt, so it stays deterministic.
+   */
+  private lockHeading() {
+    const b = this.body;
+    let q = b.rotation();
+    let f = rotate(q, { x: 1, y: 0, z: 0 });
+    const h = Math.sqrt(f.x * f.x + f.y * f.y);
+    if (f.z > 1e-7 || f.z < -1e-7) {
+      // shortest rotation taking f to (f.x, f.y, 0)/h: axis = f × t, built from the half-way vector
+      const tx = f.x / h, ty = f.y / h;
+      let mx = f.x + tx, my = f.y + ty, mz = f.z;
+      const ml = Math.sqrt(mx * mx + my * my + mz * mz);
+      mx /= ml; my /= ml; mz /= ml;
+      // c = from · mid, axis = from × mid
+      const cw = f.x * mx + f.y * my + f.z * mz;
+      const cx = f.y * mz - f.z * my;
+      const cy = f.z * mx - f.x * mz;
+      const cz = f.x * my - f.y * mx;
+      // corrected = c * q
+      const nq = {
+        w: cw * q.w - cx * q.x - cy * q.y - cz * q.z,
+        x: cw * q.x + cx * q.w + cy * q.z - cz * q.y,
+        y: cw * q.y - cx * q.z + cy * q.w + cz * q.x,
+        z: cw * q.z + cx * q.y - cy * q.x + cz * q.w,
+      };
+      const n = Math.sqrt(nq.w * nq.w + nq.x * nq.x + nq.y * nq.y + nq.z * nq.z);
+      q = { x: nq.x / n, y: nq.y / n, z: nq.z / n, w: nq.w / n };
+      b.setRotation(q, true);
+      f = rotate(q, { x: 1, y: 0, z: 0 });
+    }
+    // keep only spin about the car's long axis and about the lane's side axis (world z)
+    const fl = Math.sqrt(f.x * f.x + f.y * f.y) || 1;
+    const fx = f.x / fl, fy = f.y / fl;
+    const w = b.angvel();
+    const along = w.x * fx + w.y * fy;
+    b.setAngvel({ x: along * fx, y: along * fy, z: w.z }, true);
+  }
+
   get time() {
     return this.step * DT;
   }
@@ -248,6 +289,7 @@ export class Sim {
     this.vehicle.updateVehicle(DT);
     this.world.step();
     this.step++;
+    this.lockHeading();
 
     // --- tracking ---
     const v = body.linvel();
@@ -257,9 +299,10 @@ export class Sim {
     const up = rotate(q2, { x: 0, y: 1, z: 0 });
     const right = rotate(q2, { x: 0, y: 0, z: 1 });
     const TAU = 6.283185307179586;
+    // Kickflip = spin about the car's own long axis; flip = spin about the lane's side axis (world z).
     this.roll += ((w.x * fwd.x + w.y * fwd.y + w.z * fwd.z) * DT) / TAU;
-    this.pitch += ((w.x * right.x + w.y * right.y + w.z * right.z) * DT) / TAU;
-    this.yaw += ((w.x * up.x + w.y * up.y + w.z * up.z) * DT) / TAU;
+    this.pitch += (w.z * DT) / TAU;
+    this.yaw = 0; // heading is locked to the lane
 
     const ar = Math.max(Math.abs(this.roll), Math.abs(this.pitch), Math.abs(this.yaw));
     if (ar > this.peak) this.peak = ar;
