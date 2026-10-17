@@ -34,7 +34,8 @@ export interface Outcome {
   status: 'landed' | 'crashed' | 'rolled' | 'timeout';
   reason: string;
   trick: string;
-  rollTurns: number; // signed turns about the car's long axis
+  rollTurns: number; // signed turns about the car's long axis (net)
+  peakTurns: number; // largest rotation reached on any axis at any moment; a roll there and back nets to zero but still shows here
   pitchTurns: number;
   yawTurns: number;
   gasUsed: number; // kg
@@ -90,6 +91,7 @@ export class Sim {
   private restSteps = 0;
   private hitLineup = false;
   private roofHit = false;
+  private peak = 0;
   private wentAround = false;
 
   constructor(R: RAPIER, program: Program, tank: TankMode = 'standard') {
@@ -254,6 +256,8 @@ export class Sim {
     this.pitch += ((w.x * right.x + w.y * right.y + w.z * right.z) * DT) / TAU;
     this.yaw += ((w.x * up.x + w.y * up.y + w.z * up.z) * DT) / TAU;
 
+    const ar = Math.max(Math.abs(this.roll), Math.abs(this.pitch), Math.abs(this.yaw));
+    if (ar > this.peak) this.peak = ar;
     const pos = body.translation();
     if (pos.y > this.maxHeight) this.maxHeight = pos.y;
     // passing the lineup at ground level without hitting it means it steered round the cars
@@ -270,13 +274,15 @@ export class Sim {
     const anyContact = nContact > 0 || chassisOnGround || this.chassisTouching(() => true);
     if (!anyContact) {
       this.airborneSteps++;
-      if (this.airborneSteps > 12 && !this.everAirborne) {
+      // the take-off that counts is the last one before the lineup (little hops on the run-up don't)
+      if (this.airborneSteps > 12 && (!this.everAirborne || (this.landStep < 0 && pos.x < LINEUP_START && this.takeoffX !== null && pos.x - this.takeoffX > 3 && this.airborneSteps === 13))) {
         this.everAirborne = true;
         this.takeoffStep = this.step - this.airborneSteps;
         this.takeoffX = pos.x;
       }
     } else {
-      if (this.everAirborne && this.landStep < 0) {
+      // the landing that counts is the first touchdown past the lineup
+      if (this.everAirborne && this.landStep < 0 && pos.x > LINEUP_END - 2) {
         this.landStep = this.step;
         this.touchdownSpeed = Math.max(0, -this.prevVel.y);
       }
@@ -332,6 +338,7 @@ export class Sim {
       reason,
       trick,
       rollTurns,
+      peakTurns: this.peak,
       pitchTurns,
       yawTurns,
       gasUsed: this.gasUsed,

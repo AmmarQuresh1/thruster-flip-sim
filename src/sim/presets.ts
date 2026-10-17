@@ -42,11 +42,18 @@ export const PRESETS: Preset[] = [
     program: code('1.AAAAAOAAAAAAgAACAAAAAAAAHACAAwAHAMADCAAAgD8AcADAARwAAAAAAgAAAAAAeAA'),
   },
   {
+    id: 'backflip',
+    name: 'Backflip',
+    blurb: 'Front lifts burn longer on take-off, kicking the nose up and over the lineup.',
+    expect: { trick: 'Backflip', status: 'landed' },
+    program: code('1.AAAAAAAAAAAAAAAAAgAAEABgAADABwAEAMAHAAAAwAEAOADAAQAcAAAAAAAAAAAAAAA'),
+  },
+  {
     id: 'soft',
     name: 'Soft landing',
-    blurb: 'No tricks. Hops the lineup and spends the rest of the tank on a gentle touchdown.',
+    blurb: 'No tricks. Stays level over the lineup and spends the rest of the tank on a gentle touchdown.',
     expect: { trick: 'Straight jump', status: 'landed' },
-    program: code('1.AAAAAAgAABAAAAAcAAAAAAAYAACAAwAAAIAHAPgBAD8AeACAARgAMAAAAIABAAAAAIA'),
+    program: code('1.AAAAAAQAAAAAAAAAAAAAAAYAAADAAwAcAMADAHAAwAMADgDAAwAHAAEAAAAAAQAAABA'),
   },
 ];
 

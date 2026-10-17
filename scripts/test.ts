@@ -13,6 +13,10 @@ for (const p of PRESETS) {
   const prog = p.program();
   const o = runProgram(R, prog);
   const line = `${p.id.padEnd(9)} ${o.status.padEnd(8)} ${o.trick.padEnd(16)} gas=${fmt(o.gasUsed)}kg td=${fmt(o.touchdownSpeed)}m/s air=${fmt(o.airTime)}s`;
+  if (p.id === 'soft' && o.peakTurns > 0.2) {
+    failed++;
+    console.log(`FAIL soft: rotates ${(o.peakTurns * 360).toFixed(0)} degrees on the way, it should stay level`);
+  }
   if (p.expect && (o.status !== p.expect.status || o.trick !== p.expect.trick)) {
     failed++;
     console.log('FAIL ' + line + `  (expected ${p.expect.status} ${p.expect.trick})`);
