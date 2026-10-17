@@ -40,7 +40,7 @@ export const PRESETS: Preset[] = [
     name: '360 kickflip',
     blurb: 'Rear L spin turns it a full circle during the roll. Land within 20° of straight or it spins out.',
     expect: { trick: '360 Kickflip', status: 'landed' },
-    program: code('1.AP4BAAAAQAAAAAAAACAAAAAAAADAAwMAAMAHAHEAgAcDABzAAwAAMEAAAMABAAAYAAA'),
+    program: code('1.AP4BAAAAAMAOAAAACAAAAAAAAADAAwMACMAHAOQAgAcDADzAAwAAGEAAAAAOAABwAAA'),
   },
   {
     id: 'double',

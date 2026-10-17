@@ -48,6 +48,9 @@ Handoff notes so any session can pick this up without the original chat.
 
 - Landing cam dollies: holds its low, close spot until the car is ~10 m away, then backs off ahead of it (further when the car is high), so long jumps stay in frame. Aims above the car by the panel offset so it centres in the visible window; tracks tighter sideways in portrait. Checked against the visible window: worst 83% of the way to the edge (desktop, 36 m test jump), 56% on phones. The follow light stays 13 m above the car.
 
+- 360 kickflip preset retuned: 361° of spin, lands 2° off straight, 3° lean.
+- iPhone silent switch no longer mutes the sound (`navigator.audioSession.type = 'playback'`, silent looping <audio> fallback on older iOS).
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).
