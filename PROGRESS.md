@@ -46,6 +46,8 @@ Handoff notes so any session can pick this up without the original chat.
 
 - Truck rebuilt as one smooth lofted shell (`src/render/truck.ts`): rounded nose, wraparound windscreen into a high roof, rounded sleeper, exposed chassis with drive axles; gloss white.
 
+- Landing cam dollies: holds its low, close spot until the car is ~10 m away, then backs off ahead of it (further when the car is high), so long jumps stay in frame. Checked numerically: worst off-centre 24° of a 41° half-width across all presets and a 36 m-high test jump.
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).

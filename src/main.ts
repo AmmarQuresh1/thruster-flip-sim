@@ -627,6 +627,7 @@ function play() {
   $('result').hidden = true;
   gridEl.classList.add('locked');
   setPlayButton(true);
+  landingCamX = -1;
   if (directorOn) applyDirector(0);
   if (recArmed) startRecording();
 }
@@ -661,6 +662,7 @@ function cycleCam() {
 }
 function setCam(m: CamMode) {
   camMode = m;
+  landingCamX = -1;
   camBtn.textContent = camNames[camMode];
   controls.enabled = camMode === 'free';
   if (camMode === 'free') controls.target.copy(car.root.position);
@@ -837,6 +839,7 @@ function showResult(o: Outcome) {
 }
 
 const camPos = new THREE.Vector3(0, 2.5, -24);
+let landingCamX = -1;
 function updateCamera(dt: number) {
   const p = car.root.position;
   const shake = thrustNow * 0.08;
@@ -856,8 +859,15 @@ function updateCamera(dt: number) {
     camLook.lerp(tmpV.set(p.x, p.y, p.z), ease(9));
     camera.lookAt(camLook);
   } else if (camMode === 'landing') {
-    camera.position.set(54 + jitter(), 1.1 + jitter(), -7);
-    camLook.lerp(tmpV.set(Math.min(p.x, 50), Math.max(1.4, p.y), p.z), ease(4));
+    // Low and close at the landing zone. Once the car gets within ~10 m the camera backs away
+    // ahead of it (further when the car is high), so long jumps never fly past the lens.
+    // The aim lags the car a little, which keeps it running in on the left of the frame.
+    const wantX = Math.max(54, p.x + 10 + 0.9 * Math.max(0, p.y - 3));
+    const wantY = 1.1 + 0.3 * Math.max(0, p.y - 3);
+    if (landingCamX < 0 || camPos.distanceTo(car.root.position) > 400) landingCamX = wantX;
+    landingCamX += (wantX - landingCamX) * ease(6);
+    camera.position.set(landingCamX + jitter(), wantY + jitter(), -7);
+    camLook.lerp(tmpV.set(p.x, Math.max(1.4, p.y), p.z), ease(4));
     camera.lookAt(camLook);
   } else if (camMode === 'event') {
     camera.position.set(9, 2.2, -42);
