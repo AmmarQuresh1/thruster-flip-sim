@@ -20,6 +20,7 @@ export class ThrusterAudio {
       if (this.ctx.state === 'suspended') this.ctx.resume();
       return;
     }
+    unmuteOnIOS();
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AC) return;
     const ctx = new AC();
@@ -101,4 +102,43 @@ export class ThrusterAudio {
     this.muted = m;
     if (this.ctx) this.set(0, 1);
   }
+}
+
+/**
+ * iPhones mute Web Audio when the ring/silent switch is on, unless the page's audio counts as media
+ * playback (like a video). Safari 17+ lets us say so directly; older iOS needs a silent looping
+ * <audio> element started from a tap, which switches the page into playback mode.
+ */
+let iosUnmuted = false;
+function unmuteOnIOS() {
+  if (iosUnmuted) return;
+  iosUnmuted = true;
+  const nav = navigator as Navigator & { audioSession?: { type: string } };
+  if (nav.audioSession) {
+    try {
+      nav.audioSession.type = 'playback';
+      return;
+    } catch {
+      /* fall through to the silent-audio workaround */
+    }
+  }
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!isIOS) return;
+  // 0.1 s of silence as an 8 kHz mono WAV
+  const n = 800;
+  const buf = new ArrayBuffer(44 + n);
+  const v = new DataView(buf);
+  const w = (o: number, str: string) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  w(36, 'data'); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+  const el = document.createElement('audio');
+  el.src = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  el.loop = true;
+  el.setAttribute('playsinline', '');
+  el.play().catch(() => {
+    /* if this fails the switch still mutes us; nothing else to do */
+  });
 }

@@ -27,6 +27,7 @@ const TARGETS: Record<string, { roll: number; pitch: number; yaw: number; soft?:
   triple: { roll: 3, pitch: 0, yaw: 0 },
   '360': { roll: 1, pitch: 0, yaw: 1 },
   '180': { roll: 1, pitch: 0, yaw: 0.5 },
+  '360clean': { roll: 1, pitch: 0, yaw: 1, soft: true },
   backflip: { roll: 0, pitch: 1, yaw: 0 },
   hover: { roll: 0, pitch: 0, yaw: 0, soft: true },
 };
