@@ -351,6 +351,7 @@ sel.addEventListener('change', () => {
   const p = PRESETS.find((x) => x.id === sel.value);
   if (!p) return;
   program = p.program();
+  setTank('standard'); // presets are tuned for the standard tank
   paintGrid();
   setHint(p.blurb);
   resetRun();

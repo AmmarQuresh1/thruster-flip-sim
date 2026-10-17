@@ -5,6 +5,7 @@ export interface Preset {
   name: string;
   blurb: string;
   expect?: { trick: string; status: 'landed' }; // checked by scripts/test.ts
+  // Presets are tuned on the standard tank; loading one switches the tank back to standard.
   program: () => Program;
 }
 
@@ -24,28 +25,28 @@ export const PRESETS: Preset[] = [
     name: 'Kickflip (event style)',
     blurb: 'All four lifts throw it up, one side spins it over the lineup, then all four cushion the landing.',
     expect: { trick: 'Kickflip', status: 'landed' },
-    program: code('1.AAAAAAAAAAAAAAAQAAAAAAYAAACAGwAcALADADwAwAMAHACAAxgcAAAIAAAAAAAAAAA'),
+    program: code('1.AAAABhwAAAAAAAAMAAAAQAEAAACAGwAcALADADwAwAMAeACAAxg8AAAIADgAAAAAAAA'),
   },
   {
     id: 'double',
     name: 'Double kickflip',
     blurb: 'Two rolls on less gas than the event version, but it lands hard.',
     expect: { trick: 'Double Kickflip', status: 'landed' },
-    program: code('1.AAAAAAAAAAAAAAAAAAAAAAAAAACAOwAAAMADOAAAgD8AAADAATgAAMABAAAAAAAAMAA'),
+    program: code('1.AAAAAAAAAAAAACAAAAAAAQAAAACAOwAAAMADGAAAgD8AAADAARwAAAAAAAAAAQAAEAA'),
   },
   {
-    id: 'backflip',
-    name: 'Backflip',
-    blurb: 'Front lifts kick the nose up and over the lineup; the rear lifts stop the rotation.',
-    expect: { trick: 'Backflip', status: 'landed' },
-    program: code('1.AAAAAACAAQAAAAAAEAAAAAAAAADAOYAAAMAfwAEAwAMGAAAADgAAAAAAAAAAAAAAAAA'),
+    id: 'triple',
+    name: 'Triple kickflip',
+    blurb: 'Three rolls over the lineup, using the roof roll jets to keep it spinning.',
+    expect: { trick: 'Triple Kickflip', status: 'landed' },
+    program: code('1.AAAAAOAAAAAAgAACAAAAAAAAHACAAwAHAMADCAAAgD8AcADAARwAAAAAAgAAAAAAeAA'),
   },
   {
     id: 'soft',
     name: 'Soft landing',
     blurb: 'No tricks. Hops the lineup and spends the rest of the tank on a gentle touchdown.',
     expect: { trick: 'Straight jump', status: 'landed' },
-    program: code('1.AAAAACAAAAAAAAAQAACAAAYAADiAGwAcALADAHgAwAMAHACAAxgcAAAIAAAAAAAAAAA'),
+    program: code('1.AAAAAAgAABAAAAAcAAAAAAAYAACAAwAAAIAHAPgBAD8AeACAARgAMAAAAIABAAAAAIA'),
   },
 ];
 

@@ -23,6 +23,7 @@ const TARGETS: Record<string, { roll: number; pitch: number; yaw: number; soft?:
   kickflip: { roll: 1, pitch: 0, yaw: 0 },
   event: { roll: 1, pitch: 0, yaw: 0, soft: true },
   double: { roll: 2, pitch: 0, yaw: 0 },
+  triple: { roll: 3, pitch: 0, yaw: 0 },
   backflip: { roll: 0, pitch: 1, yaw: 0 },
   hover: { roll: 0, pitch: 0, yaw: 0, soft: true },
 };

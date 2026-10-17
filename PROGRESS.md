@@ -28,6 +28,9 @@ Handoff notes so any session can pick this up without the original chat.
 - No ramp (matches the event): the car drives in on flat ground and the four lift thrusters (14 kN each) throw it over the lineup. Standard tank is 110 kg of air. Outcomes now also fail "came down short" and "went round the lineup".
 - Presets re-found for the flat course; `FROM=<code>` and `TANK=<mode>` env vars on `scripts/search.ts` start a search from an existing program or another tank.
 
+- Lane lock: the car can't move sideways (z translation disabled), so the side jets are roof-mounted roll jets (8 kN). Presets: event kickflip, double, triple, soft landing (backflip dropped; the search couldn't land one with the lane locked). Loading a preset resets the tank to standard.
+- `scripts/browser-check.ts` runs every preset in headless Chromium to confirm the browser matches the Node test.
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).
