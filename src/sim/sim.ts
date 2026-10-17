@@ -40,6 +40,8 @@ export interface Outcome {
   yawTurns: number;
   gasUsed: number; // kg
   touchdownSpeed: number; // vertical m/s at first contact after the jump
+  landingTilt: number; // worst lean from upright after touchdown, degrees (0 = clean)
+  bounces: number; // times it left the ground again after touching down
   airTime: number;
   maxHeight: number;
   distance: number;
@@ -92,6 +94,9 @@ export class Sim {
   private hitLineup = false;
   private roofHit = false;
   private peak = 0;
+  private minUpAfterLanding = 1;
+  private bounces = 0;
+  private wasGrounded = false;
   private wentAround = false;
 
   constructor(R: RAPIER, program: Program, tank: TankMode = 'standard') {
@@ -158,7 +163,7 @@ export class Sim {
       vc.setWheelSuspensionRelaxation(i, CAR.suspensionRelaxation);
       vc.setWheelMaxSuspensionForce(i, CAR.maxSuspensionForce);
       vc.setWheelFrictionSlip(i, CAR.frictionSlip);
-      vc.setWheelMaxSuspensionTravel(i, 0.25);
+      vc.setWheelMaxSuspensionTravel(i, CAR.suspensionTravel);
     }
     this.vehicle = vc;
     this.prevVel = { x: CAR.startSpeed, y: 0, z: 0 };
@@ -292,6 +297,13 @@ export class Sim {
     this.prevVel = { x: v.x, y: v.y, z: v.z };
 
     if (this.everAirborne && chassisOnGround && up.y < 0.35) this.roofHit = true;
+    if (this.landStep >= 0) {
+      if (up.y < this.minUpAfterLanding) this.minUpAfterLanding = up.y;
+      const grounded = nContact > 0 || chassisOnGround;
+      if (this.wasGrounded && !grounded && this.airborneSteps > 6) this.bounces++;
+      if (grounded) this.wasGrounded = true;
+      else if (this.airborneSteps > 6) this.wasGrounded = false;
+    }
 
     // --- end conditions ---
     const speed = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -331,7 +343,13 @@ export class Sim {
       reason = 'Still moving at the time limit';
     } else {
       status = 'landed';
-      reason = 'Stuck the landing';
+      const tilt = (Math.acos(Math.max(-1, Math.min(1, this.minUpAfterLanding))) * 180) / Math.PI;
+      reason =
+        tilt < 15 && this.touchdownSpeed < 4 && this.bounces === 0
+          ? 'Clean landing'
+          : tilt > 50 || this.bounces > 0
+            ? 'Scrappy landing, but it stayed upright'
+            : 'Stuck the landing';
     }
     this.outcome = {
       status,
@@ -343,6 +361,8 @@ export class Sim {
       yawTurns,
       gasUsed: this.gasUsed,
       touchdownSpeed: this.touchdownSpeed,
+      landingTilt: (Math.acos(Math.max(-1, Math.min(1, this.minUpAfterLanding))) * 180) / Math.PI,
+      bounces: this.bounces,
       airTime: this.takeoffStep >= 0 && this.landStep >= 0 ? (this.landStep - this.takeoffStep) * DT : 0,
       maxHeight: this.maxHeight,
       distance: this.takeoffX === null ? 0 : x - this.takeoffX,

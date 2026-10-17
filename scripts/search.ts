@@ -45,6 +45,8 @@ function score(o: Outcome): number {
   s -= 40 * Math.abs(Math.abs(o.pitchTurns) - T.pitch);
   s -= 20 * Math.abs(Math.abs(o.yawTurns) - T.yaw);
   s -= 0.25 * o.gasUsed;
+  // reward clean, level touchdowns
+  if (o.status === 'landed') s -= 0.6 * o.landingTilt + 25 * o.bounces;
   // tricks that should stay level must not spin and spin back
   if (T.roll === 0 && T.pitch === 0) s -= 80 * Math.max(0, o.peakTurns - 0.12);
   s -= (T.soft ? 6 : 1.2) * o.touchdownSpeed;

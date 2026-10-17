@@ -27,9 +27,10 @@ export const CAR = {
   wheelZ: 0.86,
   suspensionRest: 0.32,
   suspensionStiffness: 38,
-  suspensionCompression: 4.4,
-  suspensionRelaxation: 3.2,
-  maxSuspensionForce: 1.2e5,
+  suspensionCompression: 6.5,
+  suspensionRelaxation: 4.5,
+  maxSuspensionForce: 2.4e5,
+  suspensionTravel: 0.4,
   frictionSlip: 2.2,
   startSpeed: 25, // m/s at the start of the run-up
 };
