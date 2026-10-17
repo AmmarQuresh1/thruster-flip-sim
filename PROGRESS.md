@@ -39,7 +39,8 @@ Handoff notes so any session can pick this up without the original chat.
 - Kickflip preset now lifts straight up first and flips at the top of the arc (test fails if it's more than ~20° into the roll by 2 m up); renamed from "Kickflip (event style)".
 - Smoke uses normal blending under the bloom threshold, so overlapping puffs no longer blow out.
 - Box-select preview colours beat the lit-cell colours (right-drag erase shows red on every row).
-- Free spin checkbox (off by default; `s` flag in share codes): turns the heading lock off so uneven rear jets can yaw the car. Presets switch it off.
+- Air-spin rule (replaces the Free spin checkbox): heading locked while touching the ground, free in the air, where yaw comes only from the rear jets (`Sim.airSpin` splits spin into roll / flip / swing about car-tied axes and sets the swing from a tracked rear-jet yaw rate, so roll and flip coupling can't twist the nose). On touchdown: within 20° of straight or backwards it eases back into the lane; otherwise "Landed sideways and spun out". Outer rear nozzles (Rear L spin / Rear R spin) are toed in 25° so one alone spins the car (~0.3 s ≈ 120°).
+- Presets: kickflip (lift first, clean landing), 180 kickflip to fakie, 360 kickflip, double, triple, backflip, soft landing, ramp kickflip.
 
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).

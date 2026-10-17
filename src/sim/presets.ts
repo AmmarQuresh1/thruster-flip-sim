@@ -26,7 +26,7 @@ export const PRESETS: Preset[] = [
     name: 'Kickflip',
     blurb: 'Straight up on all four lifts, then one side rolls it over the semi at the top of the arc, then all four cushion the landing.',
     expect: { trick: 'Kickflip', status: 'landed' },
-    program: code('1.AAAAAAAAAAAAAAAAAAcAAAA4AADAAwB8AOABACYAwMMBcADAAxh8AIAAAAAAAAAYCAA'),
+    program: code('1.AAAAIAAAABwAAAAAAQAAAAA4AADAAwD8AOABACYAwMMBgADAAxj8AEAAgAMAAAAYMAA'),
   },
   {
     id: '180',
@@ -47,7 +47,7 @@ export const PRESETS: Preset[] = [
     name: 'Double kickflip',
     blurb: 'Two rolls on less gas than the event version, but it lands hard.',
     expect: { trick: 'Double Kickflip', status: 'landed' },
-    program: code('1.AAAAAAAAAAAAAAAAAAAAABBAAAAAewAAAMAHGAAAgD8AAAAABRwAAAAAAA4AAAAAAAA'),
+    program: code('1.AAAAAAAAAAAAAAAADAAAAAAAAAAAfgAAAMAHGEAAgD8AAACABBwAAAAAADgAAAAAAAA'),
   },
   {
     id: 'triple',
