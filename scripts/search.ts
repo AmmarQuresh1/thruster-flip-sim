@@ -7,6 +7,7 @@ import { runProgram, type Outcome } from '../src/sim/sim';
 import type { TankMode } from '../src/sim/config';
 const TANK_MODE = (process.env.TANK ?? 'standard') as TankMode;
 const RAMP = process.env.RAMP === '1';
+const FREE_SPIN = process.env.SPIN === '1';
 import { decodeProgram, emptyProgram, encodeProgram, setCell } from '../src/sim/program';
 
 await R.init();
@@ -51,6 +52,8 @@ function score(o: Outcome): number {
   // tricks that should stay level must not spin and spin back
   if (T.roll === 0 && T.pitch === 0) s -= 80 * Math.max(0, o.peakTurns - 0.12);
   s -= (T.soft ? 6 : 1.2) * o.touchdownSpeed;
+  // the event car lifted straight up first and only then flipped
+  if (target === 'event') s -= 150 * Math.max(0, o.rotationAtLift - 0.04);
   s -= 4 * Math.max(0, o.maxHeight - 9); // keep the arc close to the event: just over the semi, not into orbit
   return s;
 }
@@ -65,7 +68,13 @@ function seedGenome(): Genome {
   const g = blank();
   const set = (id: string, k: number, s: number, l: number) => (g[idx(id)][k] = [s, l]);
   for (const id of ['FL', 'FR', 'RL', 'RR']) set(id, 0, 7, 3);
-  if (target === 'kickflip' || target === 'event' || target === 'double') {
+  if (target === 'event') {
+    // straight up on all four, then one side kicks the roll, the other side stops it, then cushion
+    for (const id of ['FL', 'FR', 'RL', 'RR']) set(id, 0, 6, 4);
+    set('FL', 1, 12, 2); set('RL', 1, 12, 2);
+    set('FR', 1, 19, 2); set('RR', 1, 19, 2);
+    for (const id of ['FL', 'FR', 'RL', 'RR']) set(id, 2, 26, 3);
+  } else if (target === 'kickflip' || target === 'event' || target === 'double') {
     const n = target === 'double' ? 3 : 2;
     set('FL', 1, 11, n); set('RL', 1, 11, n);
     set('FR', 1, 19, n); set('RR', 1, 19, n);
@@ -115,12 +124,12 @@ function fromCode(code: string): Genome {
   return g;
 }
 let best = process.env.FROM ? fromCode(process.env.FROM) : seedGenome();
-let bestO = runProgram(R, toProgram(best), undefined, TANK_MODE, RAMP);
+let bestO = runProgram(R, toProgram(best), undefined, TANK_MODE, RAMP, FREE_SPIN);
 let bestS = score(bestO);
 let cur = best, curS = bestS;
 for (let i = 0; i < iters; i++) {
   const cand = mutate(cur);
-  const o = runProgram(R, toProgram(cand), undefined, TANK_MODE, RAMP);
+  const o = runProgram(R, toProgram(cand), undefined, TANK_MODE, RAMP, FREE_SPIN);
   const s = score(o);
   // accept improvements, occasionally sideways moves
   if (s >= curS || rand() < 0.02) { cur = cand; curS = s; }

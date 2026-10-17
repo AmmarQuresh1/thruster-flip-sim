@@ -35,7 +35,8 @@ export interface Outcome {
   reason: string;
   trick: string;
   rollTurns: number; // signed turns about the car's long axis (net)
-  peakTurns: number; // largest rotation reached on any axis at any moment; a roll there and back nets to zero but still shows here
+  peakTurns: number;
+  rotationAtLift: number; // turns already rotated when the car was 2 m up; near 0 means it lifted before flipping // largest rotation reached on any axis at any moment; a roll there and back nets to zero but still shows here
   pitchTurns: number;
   yawTurns: number;
   gasUsed: number; // kg
@@ -94,12 +95,16 @@ export class Sim {
   private hitLineup = false;
   private roofHit = false;
   private peak = 0;
+  private rotAtLift = -1;
   private minUpAfterLanding = 1;
   private bounces = 0;
   private wasGrounded = false;
   private wentAround = false;
 
-  constructor(R: RAPIER, program: Program, tank: TankMode = 'standard', ramp = false) {
+  readonly freeSpin: boolean;
+
+  constructor(R: RAPIER, program: Program, tank: TankMode = 'standard', ramp = false, freeSpin = false) {
+    this.freeSpin = freeSpin;
     this.R = R;
     this.program = program;
     this.capacity = TANKS[tank].gas;
@@ -295,7 +300,7 @@ export class Sim {
     this.vehicle.updateVehicle(DT);
     this.world.step();
     this.step++;
-    this.lockHeading();
+    if (!this.freeSpin) this.lockHeading();
 
     // --- tracking ---
     const v = body.linvel();
@@ -307,13 +312,20 @@ export class Sim {
     const TAU = 6.283185307179586;
     // Kickflip = spin about the car's own long axis; flip = spin about the lane's side axis (world z).
     this.roll += ((w.x * fwd.x + w.y * fwd.y + w.z * fwd.z) * DT) / TAU;
-    this.pitch += (w.z * DT) / TAU;
-    this.yaw = 0; // heading is locked to the lane
+    if (this.freeSpin) {
+      this.pitch += ((w.x * right.x + w.y * right.y + w.z * right.z) * DT) / TAU;
+      this.yaw += ((w.x * up.x + w.y * up.y + w.z * up.z) * DT) / TAU;
+    } else {
+      this.pitch += (w.z * DT) / TAU;
+      this.yaw = 0; // heading is locked to the lane
+    }
 
     const ar = Math.max(Math.abs(this.roll), Math.abs(this.pitch), Math.abs(this.yaw));
     if (ar > this.peak) this.peak = ar;
     const pos = body.translation();
     if (pos.y > this.maxHeight) this.maxHeight = pos.y;
+    // how much it had already rotated by the time it was 2 m up (lift first, then flip, keeps this near 0)
+    if (this.rotAtLift < 0 && pos.y > 3.0) this.rotAtLift = Math.max(Math.abs(this.roll), Math.abs(this.pitch));
     // passing the lineup at ground level without hitting it means it steered round the cars
     if (pos.x > LINEUP_START && pos.x < LINEUP_END - 2 && pos.y < 2.2) this.wentAround = true;
 
@@ -406,6 +418,7 @@ export class Sim {
       trick,
       rollTurns,
       peakTurns: this.peak,
+      rotationAtLift: Math.max(0, this.rotAtLift),
       pitchTurns,
       yawTurns,
       gasUsed: this.gasUsed,
@@ -463,8 +476,15 @@ export function nameTrick(roll: number, pitch: number, yaw: number): string {
 }
 
 /** Run a whole program headlessly and return the outcome. */
-export function runProgram(R: RAPIER, program: Program, onFrame?: (f: Frame) => void, tank: TankMode = 'standard', ramp = false): Outcome {
-  const sim = new Sim(R, program, tank, ramp);
+export function runProgram(
+  R: RAPIER,
+  program: Program,
+  onFrame?: (f: Frame) => void,
+  tank: TankMode = 'standard',
+  ramp = false,
+  freeSpin = false,
+): Outcome {
+  const sim = new Sim(R, program, tank, ramp, freeSpin);
   while (sim.tick()) if (onFrame) onFrame(sim.frame());
   const o = sim.outcome!;
   sim.dispose();

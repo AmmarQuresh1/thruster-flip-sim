@@ -23,7 +23,7 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'kickflip',
-    name: 'Kickflip (event style)',
+    name: 'Kickflip',
     blurb: 'All four lifts throw it up, one side spins it over the lineup, then all four cushion the landing.',
     expect: { trick: 'Kickflip', status: 'landed' },
     program: code('1.gPEAAAAAAAAAAAAAAAAAAADAAADAAwAcAMAHABAAwAMADgDcAwAfAAAAAAAA0gAAAAA'),

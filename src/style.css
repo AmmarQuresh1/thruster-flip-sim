@@ -214,8 +214,9 @@ button { cursor: pointer; }
 .c.on.boost { background: var(--amber); box-shadow: 0 0 6px rgba(255, 181, 71, 0.5); }
 .c.on.side { background: #c9b6ff; box-shadow: 0 0 6px rgba(201, 182, 255, 0.45); }
 .c.fire { outline: 1px solid #fff; }
-.c.sel-fill { background: rgba(191, 227, 255, 0.5); }
-.c.sel-erase { background: rgba(255, 47, 63, 0.45); box-shadow: none; }
+/* box-select preview: must beat the lit-cell colours (.c.on.boost etc.) */
+.grid .c.sel-fill { background: rgba(191, 227, 255, 0.5); box-shadow: none; filter: none; }
+.grid .c.sel-erase { background: rgba(255, 47, 63, 0.7); box-shadow: none; filter: none; }
 .how { margin: 0 0 6px; font-size: 12px; color: var(--ink-dim); letter-spacing: 0.03em; }
 .c.ph { background-color: rgba(255, 255, 255, 0.22); }
 .c.on.ph { filter: brightness(1.25); }

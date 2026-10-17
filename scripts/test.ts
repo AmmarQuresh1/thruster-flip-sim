@@ -13,6 +13,10 @@ for (const p of PRESETS) {
   const prog = p.program();
   const o = runProgram(R, prog, undefined, 'standard', !!p.ramp);
   const line = `${p.id.padEnd(9)} ${o.status.padEnd(8)} ${o.trick.padEnd(16)} gas=${fmt(o.gasUsed)}kg td=${fmt(o.touchdownSpeed)}m/s air=${fmt(o.airTime)}s`;
+  if (p.id === 'kickflip' && o.rotationAtLift > 0.06) {
+    failed++;
+    console.log(`FAIL kickflip: already ${(o.rotationAtLift * 360).toFixed(0)} degrees into the roll before lifting off; it should lift first, then flip`);
+  }
   if (p.id === 'soft' && o.peakTurns > 0.2) {
     failed++;
     console.log(`FAIL soft: rotates ${(o.peakTurns * 360).toFixed(0)} degrees on the way, it should stay level`);

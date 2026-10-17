@@ -56,10 +56,9 @@ export class Plumes {
     this.mat = new THREE.ShaderMaterial({
       vertexShader: vert,
       fragmentShader: frag,
-      uniforms: { uScale: { value: 600 }, uMaxSize: { value: 300 }, uColor: { value: new THREE.Color(1.5, 1.6, 1.75) } },
+      uniforms: { uScale: { value: 600 }, uMaxSize: { value: 300 }, uColor: { value: new THREE.Color(0.78, 0.8, 0.84) } },
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
     });
     this.points = new THREE.Points(g, this.mat);
     this.points.frustumCulled = false;
@@ -93,7 +92,7 @@ export class Plumes {
       this.life[i] = 1.8 + Math.random() * 3.0;
       this.size[i] = 0.5;
       this.grow[i] = 2.2 + Math.random() * 2.2;
-      this.peak[i] = 0.026 + Math.random() * 0.03;
+      this.peak[i] = 0.045 + Math.random() * 0.045;
       this.alpha[i] = this.peak[i];
     }
     this.live += count;
@@ -117,7 +116,7 @@ export class Plumes {
       this.life[i] = 3 + Math.random() * 2.5;
       this.size[i] = 1.0;
       this.grow[i] = 2.6 + Math.random() * 2.4;
-      this.peak[i] = 0.012 + Math.random() * 0.014;
+      this.peak[i] = 0.02 + Math.random() * 0.025;
       this.alpha[i] = this.peak[i];
     }
     this.live += count;
