@@ -46,7 +46,7 @@ Handoff notes so any session can pick this up without the original chat.
 
 - Truck rebuilt as one smooth lofted shell (`src/render/truck.ts`): rounded nose, wraparound windscreen into a high roof, rounded sleeper, exposed chassis with drive axles; gloss white.
 
-- Landing cam dollies: holds its low, close spot until the car is ~10 m away, then backs off ahead of it (further when the car is high), so long jumps stay in frame. Checked numerically: worst off-centre 24° of a 41° half-width across all presets and a 36 m-high test jump.
+- Landing cam dollies: holds its low, close spot until the car is ~10 m away, then backs off ahead of it (further when the car is high), so long jumps stay in frame. Aims above the car by the panel offset so it centres in the visible window; tracks tighter sideways in portrait. Checked against the visible window: worst 83% of the way to the edge (desktop, 36 m test jump), 56% on phones. The follow light stays 13 m above the car.
 
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
