@@ -24,9 +24,9 @@ export const PRESETS: Preset[] = [
   {
     id: 'kickflip',
     name: 'Kickflip',
-    blurb: 'All four lifts throw it up, one side spins it over the lineup, then all four cushion the landing.',
+    blurb: 'Straight up on all four lifts, then one side rolls it over the semi at the top of the arc, then all four cushion the landing.',
     expect: { trick: 'Kickflip', status: 'landed' },
-    program: code('1.gPEAAAAAAAAAAAAAAAAAAADAAADAAwAcAMAHABAAwAMADgDcAwAfAAAAAAAA0gAAAAA'),
+    program: code('1.AAAAAAAAAAAAAAAAAAcAAAA4AADAAwB8AOABACYAwMMBcADAAxh8AIAAAAAAAAAYCAA'),
   },
   {
     id: 'double',

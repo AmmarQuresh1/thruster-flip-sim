@@ -36,6 +36,11 @@ Handoff notes so any session can pick this up without the original chat.
 - Optional ramp (checkbox, off by default; `~r` in share codes). Ramp kickflip preset turns it on.
 - Presets: event kickflip (clean landing), double, triple, backflip, soft landing, ramp kickflip; all land within 10° of level.
 
+- Kickflip preset now lifts straight up first and flips at the top of the arc (test fails if it's more than ~20° into the roll by 2 m up); renamed from "Kickflip (event style)".
+- Smoke uses normal blending under the bloom threshold, so overlapping puffs no longer blow out.
+- Box-select preview colours beat the lit-cell colours (right-drag erase shows red on every row).
+- Free spin checkbox (off by default; `s` flag in share codes): turns the heading lock off so uneven rear jets can yaw the car. Presets switch it off.
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).
