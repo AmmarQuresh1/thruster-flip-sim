@@ -29,6 +29,20 @@ export const PRESETS: Preset[] = [
     program: code('1.AAAAAAAAAAAAAAAAAAcAAAA4AADAAwB8AOABACYAwMMBcADAAxh8AIAAAAAAAAAYCAA'),
   },
   {
+    id: '180',
+    name: '180 kickflip to fakie',
+    blurb: 'A short burst on Rear L spin turns it half round while it rolls, so it lands and rolls away backwards.',
+    expect: { trick: '180 Kickflip to fakie', status: 'landed' },
+    program: code('1.AIcDAAAAAAAAAAABAAAAAAB4AADAAUAAAOCDAQAAgBcAAADAAzAAAMAABAAAABAAAAA'),
+  },
+  {
+    id: '360',
+    name: '360 kickflip',
+    blurb: 'Rear L spin turns it a full circle during the roll. Land within 20° of straight or it spins out.',
+    expect: { trick: '360 Kickflip', status: 'landed' },
+    program: code('1.AP4BAAAAQAAAAAAAACAAAAAAAADAAwMAAMAHAHEAgAcDABzAAwAAMEAAAMABAAAYAAA'),
+  },
+  {
     id: 'double',
     name: 'Double kickflip',
     blurb: 'Two rolls on less gas than the event version, but it lands hard.',
@@ -47,7 +61,7 @@ export const PRESETS: Preset[] = [
     name: 'Backflip',
     blurb: 'Front lifts burn longer on take-off, kicking the nose up and over the lineup.',
     expect: { trick: 'Backflip', status: 'landed' },
-    program: code('1.AAAAAAAAAAAAAAAAAAAIAAwGAADABwBgAMAHAAAAwAEAAADAAQBMAAAAAAIAAgAAAAA'),
+    program: code('1.AACAAAAAAEAAAAAAAAAAAAIGAADABwAYAMAHAAAAwQEAAADAAQAMAAAAABAAAgAAIAA'),
   },
   {
     id: 'soft',

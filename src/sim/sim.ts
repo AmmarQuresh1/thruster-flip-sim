@@ -470,7 +470,8 @@ export class Sim {
     const rollTurns = this.roll;
     const pitchTurns = this.pitch;
     const yawTurns = this.yaw;
-    const trick = nameTrick(rollTurns, pitchTurns, yawTurns);
+    const fakie = this.landStep >= 0 && !this.spunOut && rotate(this.body.rotation(), { x: 1, y: 0, z: 0 }).x < 0;
+    let trick = nameTrick(rollTurns, pitchTurns, yawTurns);
     let status: Outcome['status'];
     let reason: string;
     if (this.hitLineup) {
@@ -504,6 +505,7 @@ export class Sim {
             ? 'Scrappy landing, but it stayed upright'
             : 'Stuck the landing';
     }
+    if (status === 'landed' && fakie) trick += ' to fakie';
     this.outcome = {
       status,
       reason,
@@ -511,7 +513,7 @@ export class Sim {
       rollTurns,
       peakTurns: this.peak,
       landingHeading: (Math.acos(Math.max(-1, Math.min(1, this.landHeadingCos))) * 180) / Math.PI,
-      fakie: this.landStep >= 0 && !this.spunOut && rotate(this.body.rotation(), { x: 1, y: 0, z: 0 }).x < 0,
+      fakie,
       rotationAtLift: Math.max(0, this.rotAtLift),
       pitchTurns,
       yawTurns,

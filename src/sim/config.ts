@@ -58,10 +58,10 @@ const SIDE = 8000;
 export const THRUSTERS: ThrusterDef[] = [
   // Outer rear nozzles are toed in 25°: fired as a pair they push straight ahead, fired alone they
   // swing the tail and spin the car in the air (the lane lock stops any sideways drift).
-  { id: 'B1', label: 'Rear 1', group: 'boost', pos: { x: -2.25, y: 0.0, z: -0.6 }, dir: { x: 0.9063078, y: 0, z: -0.4226183 }, force: BOOST },
+  { id: 'B1', label: 'Rear L spin', group: 'boost', pos: { x: -2.25, y: 0.0, z: -0.6 }, dir: { x: 0.9063078, y: 0, z: -0.4226183 }, force: BOOST },
   { id: 'B2', label: 'Rear 2', group: 'boost', pos: { x: -2.25, y: 0.0, z: -0.2 }, dir: { x: 1, y: 0, z: 0 }, force: BOOST },
   { id: 'B3', label: 'Rear 3', group: 'boost', pos: { x: -2.25, y: 0.0, z: 0.2 }, dir: { x: 1, y: 0, z: 0 }, force: BOOST },
-  { id: 'B4', label: 'Rear 4', group: 'boost', pos: { x: -2.25, y: 0.0, z: 0.6 }, dir: { x: 0.9063078, y: 0, z: 0.4226183 }, force: BOOST },
+  { id: 'B4', label: 'Rear R spin', group: 'boost', pos: { x: -2.25, y: 0.0, z: 0.6 }, dir: { x: 0.9063078, y: 0, z: 0.4226183 }, force: BOOST },
   { id: 'FL', label: 'Lift front-L', group: 'lift', pos: { x: 1.6, y: -0.42, z: -0.85 }, dir: { x: 0, y: 1, z: 0 }, force: LIFT },
   { id: 'FR', label: 'Lift front-R', group: 'lift', pos: { x: 1.6, y: -0.42, z: 0.85 }, dir: { x: 0, y: 1, z: 0 }, force: LIFT },
   { id: 'RL', label: 'Lift rear-L', group: 'lift', pos: { x: -1.6, y: -0.42, z: -0.85 }, dir: { x: 0, y: 1, z: 0 }, force: LIFT },
