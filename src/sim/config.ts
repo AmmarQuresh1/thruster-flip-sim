@@ -77,7 +77,7 @@ export const COURSE = {
   ramp: { startX: -14, endX: -2, height: 4.6, halfWidth: 2.4 },
   // Parked lineup the car jumps over. x = centre, w = width along travel, h = height, l = length (z)
   lineup: [
-    { x: 5.0, w: 2.0, h: 1.45, l: 4.8, kind: 'sedan' },
+    { x: 5.0, w: 2.0, h: 1.45, l: 4.8, kind: 'coupe' },
     { x: 8.4, w: 2.0, h: 1.6, l: 4.8, kind: 'sedan' },
     { x: 13.2, w: 2.6, h: 4.0, l: 6.2, kind: 'truck' },
     { x: 18.0, w: 2.1, h: 1.9, l: 5.6, kind: 'pickup' },

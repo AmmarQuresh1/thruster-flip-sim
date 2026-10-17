@@ -39,7 +39,7 @@ Handoff notes so any session can pick this up without the original chat.
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).
-- Ammar's stylised pickup and coupe models (queued, low priority).
+- Done: Ammar's stylised pickup and coupe models are in `src/render/lineup-custom.ts` (coupe takes the camera-right slot); semi light bar at bumper height, three markers on the fairing.
 - Clip download only works on the real site, not inside the claude.ai preview.
 
 ## Rules

@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { COURSE } from '../sim/config';
+import { buildCoupe, buildPickup } from './lineup-custom';
 
 const ASPHALT = 0x0a0b0d;
 
@@ -43,6 +44,8 @@ function rbox(w: number, h: number, d: number, r: number, mat: THREE.Material) {
 }
 
 export function parkedVehicle(kind: string, w: number, h: number, l: number) {
+  if (kind === 'pickup') return buildPickup();
+  if (kind === 'coupe') return buildCoupe();
   const g = new THREE.Group();
   const colorKey = kind === 'sedan' && sedanCount++ % 2 === 1 ? 'sedan2' : kind;
   const isWhite = kind === 'truck';
@@ -88,8 +91,8 @@ export function parkedVehicle(kind: string, w: number, h: number, l: number) {
       at(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.12, 0.03), white), sx * (w / 2 - 0.35), 1.25, -L - 0.04); // headlamps
       at(rbox(0.3, 0.75, 2.3, 0.08, paint), sx * (w / 2 - 0.12), 0.95, -L + 3.0); // side fairings
     }
-    at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.05, 0.03), white), 0, 1.12, -L - 0.22); // light bar at bumper level
-    for (let i = -1; i <= 1; i++) at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.03), amber), i * 0.3, 3.3, -L - 0.03);
+    at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.05, 0.03), white), 0, 0.88, -L - 0.22); // light bar at bumper level
+    for (let i = -1; i <= 1; i++) at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.03), amber), i * 0.36, 3.95, -L + 0.65);
     wheel(0.52, 0.32, -(w / 2 - 0.2), -L + 1.0);
     wheel(0.52, 0.32, w / 2 - 0.2, -L + 1.0);
     for (const z of [L - 1.75, L - 0.6]) for (const sx of [-1, 1]) wheel(0.52, 0.55, sx * (w / 2 - 0.32), z);
