@@ -205,7 +205,7 @@ function buildGrid() {
     `<label class="dir-toggle"><input type="checkbox" id="chk-dir" checked /><span>Director</span></label>` +
     `<span class="dir-brush" role="radiogroup" aria-label="Camera to paint">` +
     DIR_CAMS.map(
-      (c) => `<button class="brush cam-${c}" data-cam="${c}" role="radio" aria-checked="false" title="Paint ${DIR_CAM_INFO[c].name} cam"><i></i>${DIR_CAM_INFO[c].name}</button>`,
+      (c) => `<button class="brush cam-${c}" data-cam="${c}" role="radio" aria-checked="false" title="Paint ${DIR_CAM_INFO[c].name} cam: click or drag on the Camera row. Shift-click cuts to the end of that shot."><i></i>${DIR_CAM_INFO[c].name}</button>`,
     ).join('') +
     `</span><button class="btn ghost dir-reset" id="btn-dir-reset" title="Back to runway, event, landing">Reset track</button>` +
     `<button class="btn ghost dir-open-btn" id="btn-dir-open" aria-expanded="false">Edit track</button>`;
@@ -505,10 +505,10 @@ gridEl.addEventListener('click', (e) => {
     setDirectorOn(true);
   }
 });
-// Camera row: click = cut to the brush camera from here to the end of the current shot;
-// drag = paint the brush camera over exactly the cells you drag across.
+// Camera row: click or drag paints the brush camera on exactly the cells you touch.
+// Shift-click (or a tap on touch screens, where dragging scrolls) cuts from that cell to the end of the shot.
 // Slow-mo row: click toggles a cell; drag paints the first cell's new value.
-let dirDrag: { row: 'cam' | 'slow'; start: number; last: number; value: number; moved: boolean; before: Uint8Array } | null = null;
+let dirDrag: { row: 'cam' | 'slow'; start: number; last: number; value: number; moved: boolean; cut: boolean; before: Uint8Array } | null = null;
 let dirGeom: { x0: number; pitch: number } | null = null;
 function dirColAt(x: number) {
   if (!dirGeom) return 0;
@@ -533,7 +533,8 @@ gridEl.addEventListener('pointerdown', (e) => {
   dirGeom = { x0: r0.left, pitch: r1.left - r0.left };
   const arr = row === 'cam' ? director.cam : director.slow;
   const value = row === 'cam' ? DIR_CAMS.indexOf(brush) : arr[c] ? 0 : 1;
-  dirDrag = { row, start: c, last: c, value, moved: false, before: arr.slice() };
+  const cut = row === 'cam' && (e.shiftKey || e.pointerType === 'touch');
+  dirDrag = { row, start: c, last: c, value, moved: false, cut, before: arr.slice() };
   dirApplyRange(c, c);
   if (!directorOn) setDirectorOn(true);
 });
@@ -547,8 +548,8 @@ window.addEventListener('pointermove', (e) => {
 });
 window.addEventListener('pointerup', () => {
   if (!dirDrag) return;
-  if (dirDrag.row === 'cam' && !dirDrag.moved) {
-    // a plain click on the camera row is a cut: run the brush camera to the end of that shot
+  if (dirDrag.cut && !dirDrag.moved) {
+    // a cut: run the brush camera from this cell to the end of the shot it lands in
     const old = dirDrag.before[dirDrag.start];
     let end = dirDrag.start;
     while (end + 1 < SLICES && dirDrag.before[end + 1] === old) end++;
