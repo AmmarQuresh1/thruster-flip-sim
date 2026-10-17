@@ -44,6 +44,8 @@ Handoff notes so any session can pick this up without the original chat.
 
 - Director track (`src/director.ts`): Camera and Slow-mo rows under the thruster grid, aligned to its 0.1 s columns; last column holds for the rest of the run. Default runway → event → landing with slow-mo over the flip. Click the camera row to cut from there to the end of that shot; drag to paint a range. Pressing the camera or slow-mo buttons by hand turns the director off. Saved in share links after `!` (`d1…`); omitted when it's the default. Folds behind "Edit track" on phones.
 
+- Truck rebuilt as one smooth lofted shell (`src/render/truck.ts`): rounded nose, wraparound windscreen into a high roof, rounded sleeper, exposed chassis with drive axles; gloss white.
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).

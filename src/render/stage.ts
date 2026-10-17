@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { COURSE } from '../sim/config';
 import { buildCoupe, buildPickup } from './lineup-custom';
+import { buildAeroTruck } from './truck';
 
 const ASPHALT = 0x0a0b0d;
 
@@ -76,26 +77,7 @@ export function parkedVehicle(kind: string, w: number, h: number, l: number) {
   };
 
   if (kind === 'truck') {
-    // cab-over semi tractor
-    at(rbox(w * 0.86, 0.45, l * 0.96, 0.05, trim), 0, 0.85, 0); // frame rails
-    at(rbox(w, 2.3, 2.3, 0.18, paint), 0, 2.25, -L + 1.15); // cab
-    at(rbox(w * 0.97, 2.5, 1.7, 0.16, paint), 0, 2.45, -L + 3.1); // sleeper
-    const fair = at(rbox(w * 0.96, 0.7, 2.1, 0.25, paint), 0, 3.62, -L + 1.6); // roof fairing
-    fair.rotation.x = 0.18;
-    const ws = at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.84, 0.95, 0.04), glass), 0, 2.8, -L - 0.01); // windshield
-    ws.rotation.x = -0.06;
-    for (const sx of [-1, 1]) at(new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 1.0), glass), sx * (w / 2 + 0.005), 2.75, -L + 0.75); // door glass
-    at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.56, 0.75, 0.05), trim), 0, 1.65, -L - 0.02); // grille
-    at(rbox(w * 1.02, 0.38, 0.32, 0.08, trim), 0, 0.9, -L - 0.05); // bumper
-    for (const sx of [-1, 1]) {
-      at(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.12, 0.03), white), sx * (w / 2 - 0.35), 1.25, -L - 0.04); // headlamps
-      at(rbox(0.3, 0.75, 2.3, 0.08, paint), sx * (w / 2 - 0.12), 0.95, -L + 3.0); // side fairings
-    }
-    at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.05, 0.03), white), 0, 0.88, -L - 0.22); // light bar at bumper level
-    for (let i = -1; i <= 1; i++) at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.03), amber), i * 0.36, 3.95, -L + 0.65);
-    wheel(0.52, 0.32, -(w / 2 - 0.2), -L + 1.0);
-    wheel(0.52, 0.32, w / 2 - 0.2, -L + 1.0);
-    for (const z of [L - 1.75, L - 0.6]) for (const sx of [-1, 1]) wheel(0.52, 0.55, sx * (w / 2 - 0.32), z);
+    return buildAeroTruck(w, l);
   } else if (kind === 'pickup') {
     at(rbox(w, 0.78, l, 0.14, paint), 0, 0.95, 0); // lower body
     at(rbox(w * 0.9, 0.72, 2.0, 0.16, glass), 0, 1.66, -L + 2.35); // cab glasshouse
