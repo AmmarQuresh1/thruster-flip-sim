@@ -867,7 +867,16 @@ function updateCamera(dt: number) {
     if (landingCamX < 0 || camPos.distanceTo(car.root.position) > 400) landingCamX = wantX;
     landingCamX += (wantX - landingCamX) * ease(6);
     camera.position.set(landingCamX + jitter(), wantY + jitter(), -7);
-    camLook.lerp(tmpV.set(p.x, Math.max(1.4, p.y), p.z), ease(4));
+    // The panel covers the bottom of the screen and the view is shifted up to compensate, so the
+    // visible window sits below the aim point. Aim above the car by that amount to centre it.
+    const v = camera.view;
+    const panelFrac = v && v.enabled ? v.offsetY / v.fullHeight : 0;
+    const dist = Math.hypot(p.x - landingCamX, 7);
+    const lift = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * panelFrac;
+    // horizontal lag keeps it running in on the left; portrait screens are too narrow for it
+    camLook.x += (p.x - camLook.x) * ease(camera.aspect < 1 ? 16 : 4);
+    camLook.y += (Math.max(1.4, p.y) + lift - camLook.y) * ease(9);
+    camLook.z = p.z;
     camera.lookAt(camLook);
   } else if (camMode === 'event') {
     camera.position.set(9, 2.2, -42);
