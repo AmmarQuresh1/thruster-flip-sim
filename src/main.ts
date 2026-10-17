@@ -603,6 +603,10 @@ function resetRun() {
   $('result').hidden = true;
   gridEl.classList.remove('locked');
   setPlayButton(false);
+  if (panelAutoMin) {
+    panelAutoMin = false;
+    setPanelMin(false);
+  }
   applyFrame(idleFrame);
   setPlayhead(-1);
   liveRoll = 0;
@@ -627,10 +631,29 @@ function play() {
   $('result').hidden = true;
   gridEl.classList.add('locked');
   setPlayButton(true);
+  if (narrow.matches && !panelEl.classList.contains('min')) {
+    panelAutoMin = true;
+    setPanelMin(true);
+  }
   landingCamX = -1;
   if (directorOn) applyDirector(0);
   if (recArmed) startRecording();
 }
+// The panel minimises to a single row while a run plays on phones, so the scene (landing cam
+// especially) isn't hidden. The toggle overrides it; resetting brings the panel back.
+const panelEl = $('panel');
+const panelBtn = $('btn-panel');
+let panelAutoMin = false;
+const narrow = window.matchMedia('(max-width: 640px), (orientation: portrait)');
+function setPanelMin(min: boolean) {
+  panelEl.classList.toggle('min', min);
+  panelBtn.textContent = min ? 'Show grid' : 'Hide grid';
+  panelBtn.setAttribute('aria-expanded', String(!min));
+}
+panelBtn.addEventListener('click', () => {
+  panelAutoMin = false; // you chose: leave it as you set it
+  setPanelMin(!panelEl.classList.contains('min'));
+});
 function setPlayButton(isRunning: boolean) {
   $('play-label').textContent = isRunning ? 'Reset' : 'Play';
   $('play-icon').setAttribute('d', isRunning ? 'M6 6h12v12H6z' : 'M7 4.5v15l12.5-7.5z');

@@ -145,6 +145,12 @@ button { cursor: pointer; }
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 .panel-head { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 8px; }
+.panel-toggle { order: 99; margin-left: auto; }
+/* minimised: just Play and the toggle, so the whole scene is visible (landing cam on phones) */
+.panel.min { padding-block: 8px max(8px, env(safe-area-inset-bottom, 0px)); }
+.panel.min .panel-head { margin-bottom: 0; }
+.panel.min .panel-head > :not(#btn-play):not(#btn-panel),
+.panel.min > :not(.panel-head) { display: none; }
 .play {
   display: inline-flex;
   align-items: center;

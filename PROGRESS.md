@@ -51,6 +51,9 @@ Handoff notes so any session can pick this up without the original chat.
 - 360 kickflip preset retuned: 361° of spin, lands 2° off straight, 3° lean.
 - iPhone silent switch no longer mutes the sound (`navigator.audioSession.type = 'playback'`, silent looping <audio> fallback on older iOS).
 
+- Panel minimises to one row (Play/Reset + Show grid) while a run plays on phones or portrait screens; Hide/Show grid toggle everywhere; reset restores it unless you toggled it yourself.
+- Repo stays private (Pages still serves the site with the Student Pack).
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).
