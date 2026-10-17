@@ -15,6 +15,7 @@ import { buildStage, buildLights } from './render/stage';
 import { buildCar } from './render/car';
 import { Plumes } from './render/plumes';
 import { ThrusterAudio } from './render/audio';
+import { DIR_CAMS, DIR_CAM_INFO, decodeDirector, defaultDirector, encodeDirector, sameDirector, type DirCam, type Director } from './director';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const REST_Y = 0.99; // chassis centre height when parked
@@ -162,6 +163,10 @@ const audio = new ThrusterAudio();
 const gridEl = $('grid');
 const cells: HTMLButtonElement[][] = [];
 const colCells: HTMLButtonElement[][] = Array.from({ length: SLICES }, () => []);
+const dirCells: { cam: HTMLButtonElement[]; slow: HTMLButtonElement[] } = { cam: [], slow: [] };
+let director: Director = defaultDirector();
+let directorOn = true;
+let brush: DirCam = 'event';
 function buildGrid() {
   gridEl.innerHTML = '';
   const corner = document.createElement('div');
@@ -192,6 +197,36 @@ function buildGrid() {
       colCells[c].push(b);
     }
   });
+
+  // director track: a toolbar row, then the camera row and the slow-mo row
+  const bar = document.createElement('div');
+  bar.className = 'dir-bar';
+  bar.innerHTML =
+    `<label class="dir-toggle"><input type="checkbox" id="chk-dir" checked /><span>Director</span></label>` +
+    `<span class="dir-brush" role="radiogroup" aria-label="Camera to paint">` +
+    DIR_CAMS.map(
+      (c) => `<button class="brush cam-${c}" data-cam="${c}" role="radio" aria-checked="false" title="Paint ${DIR_CAM_INFO[c].name} cam"><i></i>${DIR_CAM_INFO[c].name}</button>`,
+    ).join('') +
+    `</span><button class="btn ghost dir-reset" id="btn-dir-reset" title="Back to runway, event, landing">Reset track</button>` +
+    `<button class="btn ghost dir-open-btn" id="btn-dir-open" aria-expanded="false">Edit track</button>`;
+  gridEl.appendChild(bar);
+  for (const row of ['cam', 'slow'] as const) {
+    const lab = document.createElement('div');
+    lab.className = 'g-label dir';
+    lab.innerHTML = row === 'cam' ? '<i></i>Camera' : '<i></i>Slow-mo';
+    gridEl.appendChild(lab);
+    for (let c = 0; c < SLICES; c++) {
+      const b = document.createElement('button');
+      b.className = `dc ${row}${c % 10 === 0 ? ' s5' : ''}`;
+      b.dataset.row = row;
+      b.dataset.c = String(c);
+      b.setAttribute('aria-label', `${row === 'cam' ? 'Camera' : 'Slow-mo'} at ${(c * SLICE).toFixed(1)} s`);
+      b.tabIndex = -1;
+      gridEl.appendChild(b);
+      dirCells[row][c] = b;
+      colCells[c].push(b);
+    }
+  }
 }
 function paintGrid() {
   for (let r = 0; r < THRUSTERS.length; r++)
@@ -407,6 +442,121 @@ qBtn.addEventListener('click', () => {
   applyQuality();
 });
 
+// ---------------------------------------------------------------- director track
+function paintDirector() {
+  for (let c = 0; c < SLICES; c++) {
+    const cam = DIR_CAMS[director.cam[c]];
+    const b = dirCells.cam[c];
+    b.className = `dc cam cam-${cam}${c % 10 === 0 ? ' s5' : ''}`;
+    // letter at the start of each camera segment
+    b.textContent = c === 0 || director.cam[c - 1] !== director.cam[c] ? DIR_CAM_INFO[cam].letter : '';
+    b.title = `${DIR_CAM_INFO[cam].name} cam from ${(c * SLICE).toFixed(1)} s`;
+    dirCells.slow[c].classList.toggle('on', director.slow[c] === 1);
+    dirCells.slow[c].setAttribute('aria-pressed', String(director.slow[c] === 1));
+  }
+  if (playheadCol >= 0) for (const b of colCells[playheadCol]) b.classList.add('ph');
+}
+function setBrush(c: DirCam) {
+  brush = c;
+  for (const b of gridEl.querySelectorAll<HTMLButtonElement>('.brush')) {
+    const on = b.dataset.cam === c;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', String(on));
+  }
+}
+function setDirectorOn(on: boolean) {
+  directorOn = on;
+  const box = document.getElementById('chk-dir') as HTMLInputElement | null;
+  if (box) box.checked = on;
+  gridEl.classList.toggle('dir-off', !on);
+  if (on && running && sim) applyDirector(sim.time);
+}
+/** Called when you drive the camera or slow-mo by hand: the track steps aside. */
+function directorOff(announce = true) {
+  if (!directorOn) return;
+  setDirectorOn(false);
+  if (announce) toast('Director track off: you are driving the camera. Tick Director to use the track again.');
+}
+function applyDirector(t: number) {
+  const c = Math.min(SLICES - 1, Math.floor(t / SLICE));
+  const cam = DIR_CAMS[director.cam[c]];
+  if (camMode !== cam) setCam(cam);
+  const slow = director.slow[c] === 1;
+  if ((timeScale < 1) !== slow) setSlow(slow);
+}
+gridEl.addEventListener('change', (e) => {
+  const t = e.target as HTMLInputElement;
+  if (t.id === 'chk-dir') setDirectorOn(t.checked);
+});
+gridEl.addEventListener('click', (e) => {
+  const t = e.target as HTMLElement;
+  const br = t.closest<HTMLButtonElement>('.brush');
+  if (br?.dataset.cam) setBrush(br.dataset.cam as DirCam);
+  const ob = t.closest<HTMLButtonElement>('#btn-dir-open');
+  if (ob) {
+    const open = !gridEl.classList.contains('dir-open');
+    gridEl.classList.toggle('dir-open', open);
+    ob.setAttribute('aria-expanded', String(open));
+    ob.textContent = open ? 'Hide track' : 'Edit track';
+  }
+  if (t.closest('#btn-dir-reset')) {
+    director = defaultDirector();
+    paintDirector();
+    setDirectorOn(true);
+  }
+});
+// Camera row: click = cut to the brush camera from here to the end of the current shot;
+// drag = paint the brush camera over exactly the cells you drag across.
+// Slow-mo row: click toggles a cell; drag paints the first cell's new value.
+let dirDrag: { row: 'cam' | 'slow'; start: number; last: number; value: number; moved: boolean; before: Uint8Array } | null = null;
+let dirGeom: { x0: number; pitch: number } | null = null;
+function dirColAt(x: number) {
+  if (!dirGeom) return 0;
+  return Math.max(0, Math.min(SLICES - 1, Math.floor((x - dirGeom.x0) / dirGeom.pitch)));
+}
+function dirApplyRange(a: number, b: number) {
+  if (!dirDrag) return;
+  const [lo, hi] = a < b ? [a, b] : [b, a];
+  const arr = dirDrag.row === 'cam' ? director.cam : director.slow;
+  arr.set(dirDrag.before);
+  for (let c = lo; c <= hi; c++) arr[c] = dirDrag.value;
+  paintDirector();
+}
+gridEl.addEventListener('pointerdown', (e) => {
+  const d = (e.target as HTMLElement).closest<HTMLButtonElement>('.dc');
+  if (!d || running) return;
+  e.preventDefault();
+  const row = d.dataset.row as 'cam' | 'slow';
+  const c = Number(d.dataset.c);
+  const r0 = dirCells[row][0].getBoundingClientRect();
+  const r1 = dirCells[row][1].getBoundingClientRect();
+  dirGeom = { x0: r0.left, pitch: r1.left - r0.left };
+  const arr = row === 'cam' ? director.cam : director.slow;
+  const value = row === 'cam' ? DIR_CAMS.indexOf(brush) : arr[c] ? 0 : 1;
+  dirDrag = { row, start: c, last: c, value, moved: false, before: arr.slice() };
+  dirApplyRange(c, c);
+  if (!directorOn) setDirectorOn(true);
+});
+window.addEventListener('pointermove', (e) => {
+  if (!dirDrag) return;
+  const c = dirColAt(e.clientX);
+  if (c === dirDrag.last) return;
+  dirDrag.last = c;
+  dirDrag.moved = true;
+  dirApplyRange(dirDrag.start, c);
+});
+window.addEventListener('pointerup', () => {
+  if (!dirDrag) return;
+  if (dirDrag.row === 'cam' && !dirDrag.moved) {
+    // a plain click on the camera row is a cut: run the brush camera to the end of that shot
+    const old = dirDrag.before[dirDrag.start];
+    let end = dirDrag.start;
+    while (end + 1 < SLICES && dirDrag.before[end + 1] === old) end++;
+    dirApplyRange(dirDrag.start, end);
+  }
+  dirDrag = null;
+});
+
 // ---------------------------------------------------------------- toast / share
 let toastTimer = 0;
 function toast(msg: string) {
@@ -417,7 +567,7 @@ function toast(msg: string) {
   toastTimer = window.setTimeout(() => (t.hidden = true), 2600);
 }
 async function share() {
-  const code = encodeShare(program, tank, ramp);
+  const code = encodeShare(program, tank, ramp) + (sameDirector(director, defaultDirector()) ? '' : '!' + encodeDirector(director));
   try {
     history.replaceState(null, '', '#' + code);
   } catch {
@@ -455,6 +605,10 @@ function resetRun() {
   applyFrame(idleFrame);
   setPlayhead(-1);
   liveRoll = 0;
+  if (directorOn) {
+    setCam('event'); // the hero shot while you edit
+    setSlow(false);
+  }
   // everything visual goes back to a clean state; only settings survive a reset
   plumes.clear();
   prevThrottle.fill(0);
@@ -472,6 +626,7 @@ function play() {
   $('result').hidden = true;
   gridEl.classList.add('locked');
   setPlayButton(true);
+  if (directorOn) applyDirector(0);
   if (recArmed) startRecording();
 }
 function setPlayButton(isRunning: boolean) {
@@ -500,7 +655,11 @@ const camNames: Record<CamMode, string> = {
   free: 'Free cam',
 };
 function cycleCam() {
-  camMode = CAM_ORDER[(CAM_ORDER.indexOf(camMode) + 1) % CAM_ORDER.length];
+  directorOff();
+  setCam(CAM_ORDER[(CAM_ORDER.indexOf(camMode) + 1) % CAM_ORDER.length]);
+}
+function setCam(m: CamMode) {
+  camMode = m;
   camBtn.textContent = camNames[camMode];
   controls.enabled = camMode === 'free';
   if (camMode === 'free') controls.target.copy(car.root.position);
@@ -512,8 +671,12 @@ function cycleCam() {
 camBtn.addEventListener('click', cycleCam);
 const slowBtn = $('btn-slow');
 function toggleSlow() {
-  timeScale = timeScale === 1 ? 0.25 : 1;
-  slowBtn.setAttribute('aria-pressed', String(timeScale < 1));
+  directorOff();
+  setSlow(timeScale === 1);
+}
+function setSlow(on: boolean) {
+  timeScale = on ? 0.25 : 1;
+  slowBtn.setAttribute('aria-pressed', String(on));
 }
 slowBtn.addEventListener('click', toggleSlow);
 const soundBtn = $('btn-sound');
@@ -752,6 +915,7 @@ function loop(now: number) {
     emitPlumes(f, dt);
     const col = f.t < SLICES * SLICE ? Math.floor(f.t / SLICE) : -1;
     setPlayhead(col);
+    if (directorOn) applyDirector(f.t);
     if (col >= 0) THRUSTERS.forEach((_, r) => cells[r][col].classList.toggle('fire', f.throttle[r] > 0));
     audio.set(f.throttle.reduce((a, b) => a + b, 0) / THRUSTERS.length, timeScale);
     updateHud(f);
@@ -779,7 +943,10 @@ function loop(now: number) {
 // ---------------------------------------------------------------- boot
 async function boot() {
   await R.init();
-  const fromHash = decodeShare(location.hash.slice(1));
+  const [progPart, dirPart] = location.hash.slice(1).split('!');
+  const fromHash = decodeShare(progPart);
+  const sharedDir = dirPart ? decodeDirector(dirPart) : null;
+  if (sharedDir) director = sharedDir;
   if (fromHash) {
     program = fromHash.program;
     setTank(fromHash.tank);
@@ -794,6 +961,8 @@ async function boot() {
   if (isEmpty(program)) setHint(HOW);
   $('how').textContent = HOW;
   paintGrid();
+  paintDirector();
+  setBrush('event');
   resetRun();
   $('loading').hidden = true;
   resize();
@@ -805,8 +974,10 @@ async function boot() {
     play,
     resetRun,
     setCam: (m: CamMode) => {
-      while (camMode !== m) cycleCam();
+      directorOff(false);
+      setCam(m);
     },
+    useDirector: () => setDirectorOn(true),
     get outcome() {
       return lastOutcome ?? sim?.outcome ?? null;
     },
@@ -814,7 +985,8 @@ async function boot() {
       return sim?.time ?? 0;
     },
     setSlow: (on: boolean) => {
-      if ((timeScale < 1) !== on) toggleSlow();
+      directorOff(false);
+      setSlow(on);
     },
   };
 }

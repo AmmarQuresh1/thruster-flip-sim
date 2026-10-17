@@ -20,10 +20,11 @@ page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 await page.goto('http://localhost:5199/' + (process.env.HASH ? '#' + process.env.HASH : ''));
 await page.waitForFunction(() => (window as any).__flip, null, { timeout: 120000 });
-await page.evaluate((c) => (window as any).__flip.setCam(c), cam);
+if (cam === 'director') await page.evaluate(() => (window as any).__flip.useDirector());
+else await page.evaluate((c) => (window as any).__flip.setCam(c), cam);
 await page.waitForTimeout(1500);
 if (times[0] === 0) await page.screenshot({ path: `shots/${cam}-idle-${width}.png`, timeout: 180000 });
-await page.evaluate(() => (window as any).__flip.setSlow(true));
+if (cam !== 'director') await page.evaluate(() => (window as any).__flip.setSlow(true));
 await page.evaluate(() => (window as any).__flip.play());
 for (const t of times.filter((x: number) => x > 0)) {
   await page.waitForFunction((tt) => (window as any).__flip.t >= tt, t, { timeout: 300000, polling: 50 });

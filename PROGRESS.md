@@ -42,6 +42,8 @@ Handoff notes so any session can pick this up without the original chat.
 - Air-spin rule (replaces the Free spin checkbox): heading locked while touching the ground, free in the air, where yaw comes only from the rear jets (`Sim.airSpin` splits spin into roll / flip / swing about car-tied axes and sets the swing from a tracked rear-jet yaw rate, so roll and flip coupling can't twist the nose). On touchdown: within 20° of straight or backwards it eases back into the lane; otherwise "Landed sideways and spun out". Outer rear nozzles (Rear L spin / Rear R spin) are toed in 25° so one alone spins the car (~0.3 s ≈ 120°).
 - Presets: kickflip (lift first, clean landing), 180 kickflip to fakie, 360 kickflip, double, triple, backflip, soft landing, ramp kickflip.
 
+- Director track (`src/director.ts`): Camera and Slow-mo rows under the thruster grid, aligned to its 0.1 s columns; last column holds for the rest of the run. Default runway → event → landing with slow-mo over the flip. Click the camera row to cut from there to the end of that shot; drag to paint a range. Pressing the camera or slow-mo buttons by hand turns the director off. Saved in share links after `!` (`d1…`); omitted when it's the default. Folds behind "Edit track" on phones.
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).

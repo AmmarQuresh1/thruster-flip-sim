@@ -4,6 +4,7 @@ import R from '@dimforge/rapier3d-deterministic-compat';
 import { runProgram, type Frame } from '../src/sim/sim';
 import { decodeProgram, encodeProgram } from '../src/sim/program';
 import { PRESETS } from '../src/sim/presets';
+import { decodeDirector, defaultDirector, encodeDirector, sameDirector } from '../src/director';
 
 await R.init();
 let failed = 0;
@@ -45,6 +46,17 @@ if (!same) {
   failed++;
   console.log('FAIL determinism: two runs of the same program diverged');
 } else console.log(`ok   determinism (${a.length} steps identical)`);
+
+// director track round-trips through its share code
+{
+  const d = defaultDirector();
+  d.cam[5] = 3; d.cam[30] = 5; d.slow[0] = 1; d.slow[39] = 1;
+  const back = decodeDirector(encodeDirector(d));
+  if (!back || !sameDirector(d, back)) {
+    failed++;
+    console.log('FAIL director: share code does not round-trip');
+  } else console.log('ok   director share code round-trips');
+}
 
 if (failed) {
   console.log(`\n${failed} check(s) failed`);
