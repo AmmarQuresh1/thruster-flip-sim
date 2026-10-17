@@ -49,16 +49,18 @@ export function decodeProgram(s: string): Program | null {
   }
 }
 
-// Share codes may carry a tank suffix: "~b" (big) or "~u" (unlimited). No suffix = standard.
-export function encodeShare(p: Program, tank: TankMode): string {
-  return encodeProgram(p) + (tank === 'big' ? '~b' : tank === 'unlimited' ? '~u' : '');
+// Share codes may carry a settings suffix after "~": "b" big tank, "u" unlimited tank, "r" ramp on.
+// No suffix = standard tank, no ramp.
+export function encodeShare(p: Program, tank: TankMode, ramp = false): string {
+  const flags = (tank === 'big' ? 'b' : tank === 'unlimited' ? 'u' : '') + (ramp ? 'r' : '');
+  return encodeProgram(p) + (flags ? '~' + flags : '');
 }
 
-export function decodeShare(s: string): { program: Program; tank: TankMode } | null {
+export function decodeShare(s: string): { program: Program; tank: TankMode; ramp: boolean } | null {
   const program = decodeProgram(s);
   if (!program) return null;
-  const suf = s.split('~')[1];
-  return { program, tank: suf === 'b' ? 'big' : suf === 'u' ? 'unlimited' : 'standard' };
+  const suf = s.split('~')[1] ?? '';
+  return { program, tank: suf.includes('b') ? 'big' : suf.includes('u') ? 'unlimited' : 'standard', ramp: suf.includes('r') };
 }
 
 // Build a program from a compact description: { rowId: [[fromSlice, toSliceExclusive], ...] }

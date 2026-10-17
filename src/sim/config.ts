@@ -72,7 +72,9 @@ export const THRUSTERS: ThrusterDef[] = [
 // Course layout along world +x. Ground is y = 0.
 export const COURSE = {
   startX: -30,
-  laneEndX: -8, // the approach lane (barriers, centreline) stops here; there is no ramp, the lift thrusters do the jump
+  laneEndX: -8, // the approach lane (barriers, centreline) stops here
+  // Optional kicker ramp (off by default; the event had none and the lift thrusters do the jump).
+  ramp: { startX: -14, endX: -2, height: 4.6, halfWidth: 2.4 },
   // Parked lineup the car jumps over. x = centre, w = width along travel, h = height, l = length (z)
   lineup: [
     { x: 5.0, w: 2.0, h: 1.45, l: 4.8, kind: 'sedan' },

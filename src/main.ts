@@ -147,6 +147,7 @@ applyQuality();
 let program: Program = (PRESETS.find((p) => p.id === DEFAULT_PRESET) ?? PRESETS[0]).program();
 let sim: Sim | null = null;
 let tank: TankMode = 'standard';
+let ramp = false;
 let idleFrame: Frame;
 let running = false;
 let acc = 0;
@@ -352,6 +353,7 @@ sel.addEventListener('change', () => {
   if (!p) return;
   program = p.program();
   setTank('standard'); // presets are tuned for the standard tank
+  setRamp(!!p.ramp);
   paintGrid();
   setHint(p.blurb);
   resetRun();
@@ -377,6 +379,16 @@ function setTank(t: TankMode) {
   tank = t;
   tankSel.value = t;
 }
+const rampBox = $<HTMLInputElement>('chk-ramp');
+function setRamp(on: boolean) {
+  ramp = on;
+  rampBox.checked = on;
+  stage.setRamp(on);
+}
+rampBox.addEventListener('change', () => {
+  setRamp(rampBox.checked);
+  resetRun();
+});
 tankSel.addEventListener('change', () => {
   setTank(tankSel.value as TankMode);
   resetRun();
@@ -405,7 +417,7 @@ function toast(msg: string) {
   toastTimer = window.setTimeout(() => (t.hidden = true), 2600);
 }
 async function share() {
-  const code = encodeShare(program, tank);
+  const code = encodeShare(program, tank, ramp);
   try {
     history.replaceState(null, '', '#' + code);
   } catch {
@@ -432,7 +444,7 @@ $('btn-clear').addEventListener('click', () => {
 // ---------------------------------------------------------------- run control
 function resetRun() {
   if (sim) sim.dispose();
-  sim = new Sim(R, program, tank);
+  sim = new Sim(R, program, tank, ramp);
   idleFrame = sim.frame();
   running = false;
   finishedAt = -1;
@@ -452,7 +464,7 @@ function resetRun() {
 function play() {
   audio.ensure();
   if (sim) sim.dispose();
-  sim = new Sim(R, program, tank);
+  sim = new Sim(R, program, tank, ramp);
   running = true;
   finishedAt = -1;
   acc = 0;
@@ -771,6 +783,7 @@ async function boot() {
   if (fromHash) {
     program = fromHash.program;
     setTank(fromHash.tank);
+    setRamp(fromHash.ramp);
     markCustom();
     setHint('Loaded a shared flip. Press Play.');
   } else {

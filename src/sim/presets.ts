@@ -6,6 +6,7 @@ export interface Preset {
   blurb: string;
   expect?: { trick: string; status: 'landed' }; // checked by scripts/test.ts
   // Presets are tuned on the standard tank; loading one switches the tank back to standard.
+  ramp?: boolean; // tuned with the optional ramp on; loading the preset turns it on
   program: () => Program;
 }
 
@@ -56,5 +57,15 @@ export const PRESETS: Preset[] = [
     program: code('1.AAAAAAAgAIAAAAAAAAAAAAAAAADAAwAcBsADANABwQMAHADAAwAHAAAAAAAAAAAAAAA'),
   },
 ];
+
+// appended so existing preset order stays the same
+PRESETS.push({
+  id: 'ramp',
+  name: 'Ramp kickflip',
+  blurb: 'The ramp does the launch, so a roll costs about a third of the gas. Loading this turns the ramp on.',
+  ramp: true,
+  expect: { trick: 'Kickflip', status: 'landed' },
+  program: code('1.AAAAAQAAAAAAAAAAgAEAAAAAAAAAAAEADgAAABgAAAMAAAAAAIABDAAAAAAAAIAADgA'),
+});
 
 export const DEFAULT_PRESET = 'kickflip';

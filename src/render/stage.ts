@@ -172,6 +172,35 @@ export function buildStage(scene: THREE.Scene) {
     root.add(car);
   }
 
+  // optional kicker ramp, hidden unless the ramp setting is on
+  const rampGroup = new THREE.Group();
+  {
+    const { startX: a, endX: b, height: h, halfWidth: w } = COURSE.ramp;
+    const rs = new THREE.Shape();
+    rs.moveTo(a, 0);
+    rs.lineTo(b, 0);
+    rs.lineTo(b, h);
+    rs.closePath();
+    const rg = new THREE.ExtrudeGeometry(rs, { depth: w * 2, bevelEnabled: false });
+    rg.translate(0, 0, -w);
+    const ramp = new THREE.Mesh(rg, new THREE.MeshStandardMaterial({ color: 0x15171b, roughness: 0.5, metalness: 0.6 }));
+    ramp.castShadow = ramp.receiveShadow = true;
+    rampGroup.add(ramp);
+    const len = Math.hypot(b - a, h);
+    const ang = Math.atan2(h, b - a);
+    for (const sz of [-1, 1]) {
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.06), emissive(0xeaf4ff, 1.3));
+      edge.position.set((a + b) / 2, h / 2 + 0.03, sz * (w + 0.02));
+      edge.rotation.z = ang;
+      rampGroup.add(edge);
+    }
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, w * 2), emissive(0xff2236, 4));
+    lip.position.set(b, h + 0.02, 0);
+    rampGroup.add(lip);
+  }
+  rampGroup.visible = false;
+  root.add(rampGroup);
+
   // floodlight rigs (left of the event shot = +x side here, behind the lineup)
   const rigMat = new THREE.MeshStandardMaterial({ color: 0x1b1d21, roughness: 0.7, metalness: 0.5 });
   const lampMat = emissive(0xfff3dd, 3.5);
@@ -341,6 +370,9 @@ export function buildStage(scene: THREE.Scene) {
 
   return {
     root,
+    setRamp(on: boolean) {
+      rampGroup.visible = on;
+    },
     /** Approach floodlights switch on one by one as the car reaches them; all off again on reset. */
     update(carX: number) {
       for (const f of floods) {

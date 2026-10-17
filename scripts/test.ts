@@ -11,7 +11,7 @@ const fmt = (n: number) => n.toFixed(2);
 
 for (const p of PRESETS) {
   const prog = p.program();
-  const o = runProgram(R, prog);
+  const o = runProgram(R, prog, undefined, 'standard', !!p.ramp);
   const line = `${p.id.padEnd(9)} ${o.status.padEnd(8)} ${o.trick.padEnd(16)} gas=${fmt(o.gasUsed)}kg td=${fmt(o.touchdownSpeed)}m/s air=${fmt(o.airTime)}s`;
   if (p.id === 'soft' && o.peakTurns > 0.2) {
     failed++;

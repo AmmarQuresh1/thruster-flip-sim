@@ -6,6 +6,7 @@ import { SLICES, THRUSTERS } from '../src/sim/config';
 import { runProgram, type Outcome } from '../src/sim/sim';
 import type { TankMode } from '../src/sim/config';
 const TANK_MODE = (process.env.TANK ?? 'standard') as TankMode;
+const RAMP = process.env.RAMP === '1';
 import { decodeProgram, emptyProgram, encodeProgram, setCell } from '../src/sim/program';
 
 await R.init();
@@ -114,12 +115,12 @@ function fromCode(code: string): Genome {
   return g;
 }
 let best = process.env.FROM ? fromCode(process.env.FROM) : seedGenome();
-let bestO = runProgram(R, toProgram(best), undefined, TANK_MODE);
+let bestO = runProgram(R, toProgram(best), undefined, TANK_MODE, RAMP);
 let bestS = score(bestO);
 let cur = best, curS = bestS;
 for (let i = 0; i < iters; i++) {
   const cand = mutate(cur);
-  const o = runProgram(R, toProgram(cand), undefined, TANK_MODE);
+  const o = runProgram(R, toProgram(cand), undefined, TANK_MODE, RAMP);
   const s = score(o);
   // accept improvements, occasionally sideways moves
   if (s >= curS || rand() < 0.02) { cur = cand; curS = s; }

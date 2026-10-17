@@ -31,9 +31,15 @@ Handoff notes so any session can pick this up without the original chat.
 - Lane lock: the car can't move sideways (z translation disabled), so the side jets are roof-mounted roll jets (8 kN). Presets: event kickflip, double, triple, soft landing (backflip dropped; the search couldn't land one with the lane locked). Loading a preset resets the tank to standard.
 - `scripts/browser-check.ts` runs every preset in headless Chromium to confirm the browser matches the Node test.
 
+- Heading lock: the car may only spin about its own long axis (kickflips) and the lane's side axis (flips); other spin is projected out each step and any heading creep rotated back (`Sim.lockHeading`). Removes the yaw drift from one-sided tyre grip at take-off. Rapier's own rotation lock is body-relative, so it isn't used.
+- Softer, longer suspension (0.4 m travel). Results report lean after touchdown and bounces; the card says Clean / Stuck / Scrappy landing.
+- Optional ramp (checkbox, off by default; `~r` in share codes). Ramp kickflip preset turns it on.
+- Presets: event kickflip (clean landing), double, triple, backflip, soft landing, ramp kickflip; all land within 10° of level.
+
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).
+- Ammar's stylised pickup and coupe models (queued, low priority).
 - Clip download only works on the real site, not inside the claude.ai preview.
 
 ## Rules

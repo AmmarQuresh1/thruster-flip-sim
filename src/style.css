@@ -172,6 +172,8 @@ button { cursor: pointer; }
   border-radius: 2px;
 }
 .preset option { background: #0c1016; }
+.preset.toggle { cursor: pointer; }
+.preset.toggle input { width: 16px; height: 16px; accent-color: var(--frost); margin: 0; }
 .hint { margin: 0 0 0 auto; font-size: 13px; color: var(--ink-dim); letter-spacing: 0.03em; min-width: 0; }
 
 .grid-wrap { overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 2px; }

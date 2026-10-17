@@ -99,7 +99,7 @@ export class Sim {
   private wasGrounded = false;
   private wentAround = false;
 
-  constructor(R: RAPIER, program: Program, tank: TankMode = 'standard') {
+  constructor(R: RAPIER, program: Program, tank: TankMode = 'standard', ramp = false) {
     this.R = R;
     this.program = program;
     this.capacity = TANKS[tank].gas;
@@ -112,6 +112,12 @@ export class Sim {
     // Ground
     const ground = world.createCollider(R.ColliderDesc.cuboid(400, 0.5, 400).setTranslation(0, -0.5, 0).setFriction(0.9));
     this.groundHandle = ground.handle;
+
+    if (ramp) {
+      const { startX: a, endX: b, height: h, halfWidth: w } = COURSE.ramp;
+      const pts = new Float32Array([a, 0, -w, a, 0, w, b, 0, -w, b, 0, w, b, h, -w, b, h, w]);
+      world.createCollider(R.ColliderDesc.convexHull(pts)!.setFriction(0.9));
+    }
 
     // Parked lineup
     for (const v of COURSE.lineup) {
@@ -457,8 +463,8 @@ export function nameTrick(roll: number, pitch: number, yaw: number): string {
 }
 
 /** Run a whole program headlessly and return the outcome. */
-export function runProgram(R: RAPIER, program: Program, onFrame?: (f: Frame) => void, tank: TankMode = 'standard'): Outcome {
-  const sim = new Sim(R, program, tank);
+export function runProgram(R: RAPIER, program: Program, onFrame?: (f: Frame) => void, tank: TankMode = 'standard', ramp = false): Outcome {
+  const sim = new Sim(R, program, tank, ramp);
   while (sim.tick()) if (onFrame) onFrame(sim.frame());
   const o = sim.outcome!;
   sim.dispose();
