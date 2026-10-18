@@ -1,6 +1,6 @@
 # Progress
 
-Handoff notes so any session can pick this up without the original chat.
+Development log.
 
 ## Done
 - Vite + TypeScript + three.js app, Rapier physics (deterministic build) at a fixed 120 Hz.
@@ -52,13 +52,11 @@ Handoff notes so any session can pick this up without the original chat.
 - iPhone silent switch no longer mutes the sound (`navigator.audioSession.type = 'playback'`, silent looping <audio> fallback on older iOS).
 
 - Panel minimises to one row (Play/Reset + Show grid) while a run plays on phones or portrait screens; Hide/Show grid toggle everywhere; reset restores it unless you toggled it yourself.
-- Repo stays private (Pages still serves the site with the Student Pack).
 
 ## Next
 - Check on a real phone and a real GPU (headless shots use software WebGL).
 - Optional: swap in a nicer car model (`src/render/car.ts` builds the current one procedurally).
-- Done: Ammar's stylised pickup and coupe models are in `src/render/lineup-custom.ts` (coupe takes the camera-right slot); semi light bar at bumper height, three markers on the fairing.
-- Clip download only works on the real site, not inside the claude.ai preview.
+- Done: stylised pickup and coupe models are in `src/render/lineup-custom.ts` (coupe takes the camera-right slot); semi light bar at bumper height, three markers on the fairing.
 
 ## Rules
 - Anything that changes `src/sim/config.ts` invalidates preset codes: re-run `npm run search -- <target> 4000 <seed>` and update `src/sim/presets.ts`, then `npm test`.

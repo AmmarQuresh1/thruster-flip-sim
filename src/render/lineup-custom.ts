@@ -1,4 +1,4 @@
-// Stylised lineup models supplied by Ammar (pickup and coupe), used for those two slots.
+// Stylised lineup models (pickup and coupe), used for those two slots.
 // Front at -Z, ground at y = 0, same convention as the other parked vehicles in stage.ts.
 import * as THREE from 'three';
 
